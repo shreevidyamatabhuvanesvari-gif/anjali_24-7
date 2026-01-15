@@ -1,172 +1,100 @@
 /* ======================================================
-   🧠 ANJALI CENTRAL BRAIN – engine.js
-   Universal Exam Engine
-   Author: Anjali System
+   🧠 ANJALI – CENTRAL EXAM BRAIN
+   This file connects all domain engines
 ====================================================== */
 
-/* ========== Global Storage Hook ========== */
-window.AnjaliEngine = {
-  DB: null,
-  exam: null,
-  subject: null,
-  topic: null
+/* =================== IMPORT ALL ENGINES =================== */
+
+import { workforceEngine } from "./economy/employment/workforce.js";
+import { sectoralEngine } from "./economy/employment/sectoral.js";
+import { unemploymentEngine } from "./economy/employment/unemployment.js";
+import { indicatorsEngine } from "./economy/employment/indicators.js";
+import { trendsEngine } from "./economy/employment/trends.js";
+import { schemesEngine } from "./economy/employment/schemes.js";
+import { informalEngine } from "./economy/employment/informal.js";
+
+/* =================== ENGINE REGISTRY =================== */
+
+const ENGINE_REGISTRY = {
+  "Economy.Employment": [
+    workforceEngine,
+    sectoralEngine,
+    unemploymentEngine,
+    indicatorsEngine,
+    trendsEngine,
+    schemesEngine,
+    informalEngine
+  ]
 };
 
-/* ========== Attach Database ========== */
-AnjaliEngine.attachDB = function(db){
-  this.DB = db;
-};
+/* =================== MASTER EXTRACTOR =================== */
 
-/* ========== Set Active Path ========== */
-AnjaliEngine.setPath = function(exam, subject, topic){
-  this.exam = exam;
-  this.subject = subject;
-  this.topic = topic;
-};
+export function extractExamFacts(articleText, domainPath) {
 
-/* ========== Get Active Array ========== */
-AnjaliEngine._arr = function(){
-  return this.DB[this.exam][this.subject][this.topic];
-};
+  let engines = ENGINE_REGISTRY[domainPath];
+  if (!engines) return [];
 
-/* ========== Duplicate Guard ========== */
-AnjaliEngine.exists = function(q){
-  return this._arr().some(x => x.q.trim() === q.trim());
-};
+  let allFacts = [];
 
-/* ========== Save MCQ ========== */
-AnjaliEngine.saveMCQ = function(obj){
-  if(this.exists(obj.q)) return false;
-  this._arr().push(obj);
-  return true;
-};
-
-/* ========== Delete Last ========== */
-AnjaliEngine.deleteLast = function(){
-  this._arr().pop();
-};
-
-/* ========== Get All ========== */
-AnjaliEngine.getAll = function(){
-  return this._arr();
-};
-
-/* ======================================================
-   📄 ARTICLE → FACT → MCQ PIPELINE
-====================================================== */
-
-AnjaliEngine.fromArticle = function(text){
-  let lines = text.split(/[।.\n]/);
-  let facts = [];
-
-  lines.forEach(line=>{
-    line = line.trim();
-    if(line.length < 15) return;
-
-    /* ---- YEARS ---- */
-    let y = line.match(/\d{4}/);
-    if(y){
-      facts.push({
-        q:"इस लेख में कौन-सा वर्ष उल्लेखित है?",
-        ans:y[0]
-      });
-    }
-
-    /* ---- ECONOMY CORE ---- */
-    if(line.includes("कृषि") && line.includes("उद्योग") && line.includes("सेवा")){
-      facts.push({
-        q:"भारतीय अर्थव्यवस्था किन तीन क्षेत्रों पर आधारित है?",
-        ans:"कृषि, उद्योग और सेवा क्षेत्र"
-      });
-    }
-
-    if(line.includes("रिज़र्व बैंक") || line.includes("RBI")){
-      facts.push({
-        q:"भारत की मौद्रिक नीति का संचालन कौन करता है?",
-        ans:"भारतीय रिज़र्व बैंक"
-      });
-    }
-
-    if(line.includes("उदारीकरण") || line.includes("1991")){
-      facts.push({
-        q:"भारत में आर्थिक उदारीकरण कब लागू किया गया?",
-        ans:"1991"
-      });
-    }
-
-    if(line.includes("विदेशी निवेश")){
-      facts.push({
-        q:"उदारीकरण के बाद किसका प्रवाह बढ़ा?",
-        ans:"विदेशी निवेश"
-      });
-    }
-
-    /* ---- GLOBAL ECONOMY ---- */
-    if(line.includes("World Bank") || line.includes("विश्व बैंक")){
-      facts.push({
-        q:"विश्व बैंक का मुख्य कार्य क्या है?",
-        ans:"विकासशील देशों को आर्थिक सहायता देना"
-      });
-    }
-
-    if(line.includes("IMF") || line.includes("अंतरराष्ट्रीय मुद्रा कोष")){
-      facts.push({
-        q:"IMF का मुख्य उद्देश्य क्या है?",
-        ans:"वैश्विक मौद्रिक स्थिरता बनाए रखना"
-      });
+  engines.forEach(engine => {
+    try {
+      const facts = engine(articleText);
+      if (Array.isArray(facts)) {
+        allFacts = allFacts.concat(facts);
+      }
+    } catch (e) {
+      console.error("Engine failed:", engine.name, e);
     }
   });
 
-  return this.toMCQ(facts);
-};
+  return deduplicateFacts(allFacts);
+}
 
-/* ======================================================
-   🔀 FACT → EXAM MCQ
-====================================================== */
+/* =================== REMOVE DUPLICATES =================== */
 
-AnjaliEngine.toMCQ = function(facts){
-  let out = [];
-
-  facts.forEach(f=>{
-    let wrongs = ["लोहा आधारित व्यवस्था","केवल शिकार","कोई उल्लेख नहीं"];
-    wrongs.sort(()=>Math.random()-0.5);
-
-    let opts = [f.ans, wrongs[0], wrongs[1]];
-    opts.sort(()=>Math.random()-0.5);
-    opts.push("कोई नहीं"); // D
-
-    let correct = ["A","B","C","D"][opts.indexOf(f.ans)];
-
-    out.push({
-      q:f.q,
-      a:opts[0],
-      b:opts[1],
-      c:opts[2],
-      d:opts[3],
-      correct:correct,
-      exp:"व्याख्या: लेख के अनुसार सही उत्तर है — " + f.ans
-    });
+function deduplicateFacts(facts) {
+  const seen = new Set();
+  return facts.filter(f => {
+    const key = f.q + "|" + f.ans;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
+}
 
-  return out;
-};
+/* =================== MCQ GENERATOR =================== */
 
-/* ======================================================
-   📌 ONE-LINER ENGINE
-====================================================== */
+export function convertFactsToMCQ(facts) {
+  return facts.map(f => {
+    let wrong = generateWrongOptions(f.ans);
+    let options = shuffle([f.ans, ...wrong.slice(0,2)]);
+    options.push("कोई नहीं");
 
-AnjaliEngine.toOneLiners = function(text){
-  let lines = text.split(/[।.\n]/);
-  let out = [];
+    let correct = ["A","B","C","D"][options.indexOf(f.ans)];
 
-  lines.forEach(l=>{
-    if(l.length>20){
-      out.push({
-        q:l.trim(),
-        a:""
-      });
-    }
+    return {
+      q: f.q,
+      a: options[0],
+      b: options[1],
+      c: options[2],
+      d: options[3],
+      correct: correct,
+      exp: "व्याख्या: " + f.ans + " लेख के अनुसार सही है।"
+    };
   });
+}
 
-  return out;
-};
+/* =================== HELPERS =================== */
+
+function shuffle(arr) {
+  return arr.sort(() => Math.random() - 0.5);
+}
+
+function generateWrongOptions(correct) {
+  return [
+    "केवल निजी क्षेत्र",
+    "अस्थायी प्रवृत्ति",
+    "सरकारी नियंत्रण नहीं",
+    "कोई उल्लेख नहीं"
+  ].filter(x => x !== correct);
+}
