@@ -1,119 +1,172 @@
-/* ===========================================================
-   🧠 ANJALI CENTRAL EXAM ENGINE
-   This is the brain of the entire system.
-   It decides:
-   - Which subject engine to use
-   - How to extract facts
-   - How to avoid duplicates
-   - How to store MCQs
-=========================================================== */
+/* ======================================================
+   🧠 ANJALI CENTRAL BRAIN – engine.js
+   Universal Exam Engine
+   Author: Anjali System
+====================================================== */
 
-const AnjaliEngine = (function(){
+/* ========== Global Storage Hook ========== */
+window.AnjaliEngine = {
+  DB: null,
+  exam: null,
+  subject: null,
+  topic: null
+};
 
-  /* ===============================
-     INTERNAL MEMORY
-  =============================== */
-  let engines = {};      // subject engines
-  let usedQuestions = new Set();   // to avoid duplicates
+/* ========== Attach Database ========== */
+AnjaliEngine.attachDB = function(db){
+  this.DB = db;
+};
 
-  /* ===============================
-     REGISTER SUBJECT ENGINE
-     Example: Economy, History, Polity
-  =============================== */
-  function registerEngine(subjectName, engineObject){
-    engines[subjectName] = engineObject;
-  }
+/* ========== Set Active Path ========== */
+AnjaliEngine.setPath = function(exam, subject, topic){
+  this.exam = exam;
+  this.subject = subject;
+  this.topic = topic;
+};
 
-  /* ===============================
-     MAIN ENTRY: ARTICLE → MCQs
-  =============================== */
-  function generateFromArticle(subject, articleText){
+/* ========== Get Active Array ========== */
+AnjaliEngine._arr = function(){
+  return this.DB[this.exam][this.subject][this.topic];
+};
 
-    if(!engines[subject]){
-      throw "No engine registered for " + subject;
+/* ========== Duplicate Guard ========== */
+AnjaliEngine.exists = function(q){
+  return this._arr().some(x => x.q.trim() === q.trim());
+};
+
+/* ========== Save MCQ ========== */
+AnjaliEngine.saveMCQ = function(obj){
+  if(this.exists(obj.q)) return false;
+  this._arr().push(obj);
+  return true;
+};
+
+/* ========== Delete Last ========== */
+AnjaliEngine.deleteLast = function(){
+  this._arr().pop();
+};
+
+/* ========== Get All ========== */
+AnjaliEngine.getAll = function(){
+  return this._arr();
+};
+
+/* ======================================================
+   📄 ARTICLE → FACT → MCQ PIPELINE
+====================================================== */
+
+AnjaliEngine.fromArticle = function(text){
+  let lines = text.split(/[।.\n]/);
+  let facts = [];
+
+  lines.forEach(line=>{
+    line = line.trim();
+    if(line.length < 15) return;
+
+    /* ---- YEARS ---- */
+    let y = line.match(/\d{4}/);
+    if(y){
+      facts.push({
+        q:"इस लेख में कौन-सा वर्ष उल्लेखित है?",
+        ans:y[0]
+      });
     }
 
-    const engine = engines[subject];
-    const lines = articleText.split(/[।\n\.]/);
-    let facts = [];
+    /* ---- ECONOMY CORE ---- */
+    if(line.includes("कृषि") && line.includes("उद्योग") && line.includes("सेवा")){
+      facts.push({
+        q:"भारतीय अर्थव्यवस्था किन तीन क्षेत्रों पर आधारित है?",
+        ans:"कृषि, उद्योग और सेवा क्षेत्र"
+      });
+    }
 
-    lines.forEach(line=>{
-      line = line.trim();
-      if(line.length < 10) return;
+    if(line.includes("रिज़र्व बैंक") || line.includes("RBI")){
+      facts.push({
+        q:"भारत की मौद्रिक नीति का संचालन कौन करता है?",
+        ans:"भारतीय रिज़र्व बैंक"
+      });
+    }
 
-      const extracted = engine.extract(line);
-      if(Array.isArray(extracted)){
-        extracted.forEach(f=>facts.push(f));
-      }
+    if(line.includes("उदारीकरण") || line.includes("1991")){
+      facts.push({
+        q:"भारत में आर्थिक उदारीकरण कब लागू किया गया?",
+        ans:"1991"
+      });
+    }
+
+    if(line.includes("विदेशी निवेश")){
+      facts.push({
+        q:"उदारीकरण के बाद किसका प्रवाह बढ़ा?",
+        ans:"विदेशी निवेश"
+      });
+    }
+
+    /* ---- GLOBAL ECONOMY ---- */
+    if(line.includes("World Bank") || line.includes("विश्व बैंक")){
+      facts.push({
+        q:"विश्व बैंक का मुख्य कार्य क्या है?",
+        ans:"विकासशील देशों को आर्थिक सहायता देना"
+      });
+    }
+
+    if(line.includes("IMF") || line.includes("अंतरराष्ट्रीय मुद्रा कोष")){
+      facts.push({
+        q:"IMF का मुख्य उद्देश्य क्या है?",
+        ans:"वैश्विक मौद्रिक स्थिरता बनाए रखना"
+      });
+    }
+  });
+
+  return this.toMCQ(facts);
+};
+
+/* ======================================================
+   🔀 FACT → EXAM MCQ
+====================================================== */
+
+AnjaliEngine.toMCQ = function(facts){
+  let out = [];
+
+  facts.forEach(f=>{
+    let wrongs = ["लोहा आधारित व्यवस्था","केवल शिकार","कोई उल्लेख नहीं"];
+    wrongs.sort(()=>Math.random()-0.5);
+
+    let opts = [f.ans, wrongs[0], wrongs[1]];
+    opts.sort(()=>Math.random()-0.5);
+    opts.push("कोई नहीं"); // D
+
+    let correct = ["A","B","C","D"][opts.indexOf(f.ans)];
+
+    out.push({
+      q:f.q,
+      a:opts[0],
+      b:opts[1],
+      c:opts[2],
+      d:opts[3],
+      correct:correct,
+      exp:"व्याख्या: लेख के अनुसार सही उत्तर है — " + f.ans
     });
+  });
 
-    if(facts.length === 0){
-      return [];
+  return out;
+};
+
+/* ======================================================
+   📌 ONE-LINER ENGINE
+====================================================== */
+
+AnjaliEngine.toOneLiners = function(text){
+  let lines = text.split(/[।.\n]/);
+  let out = [];
+
+  lines.forEach(l=>{
+    if(l.length>20){
+      out.push({
+        q:l.trim(),
+        a:""
+      });
     }
+  });
 
-    const mcqs = facts.map(f => makeMCQ(f))
-                      .filter(q => q !== null);
-
-    return mcqs;
-  }
-
-  /* ===============================
-     FACT → EXAM MCQ
-  =============================== */
-  function makeMCQ(fact){
-
-    const key = fact.q + "::" + fact.ans;
-    if(usedQuestions.has(key)) return null;   // prevent duplicates
-    usedQuestions.add(key);
-
-    const wrongs = getDistractors(fact.ans);
-    const options = shuffle([fact.ans, wrongs[0], wrongs[1], "कोई नहीं"]);
-
-    const letters = ["A","B","C","D"];
-    const correct = letters[options.indexOf(fact.ans)];
-
-    return {
-      q: fact.q,
-      a: options[0],
-      b: options[1],
-      c: options[2],
-      d: options[3],
-      correct: correct,
-      exp: "इसका सही उत्तर है: " + fact.ans
-    };
-  }
-
-  /* ===============================
-     COMMON DISTRACTORS
-  =============================== */
-  function getDistractors(answer){
-    const pool = [
-      "लोहा आधारित व्यवस्था",
-      "केवल शिकार पर आधारित",
-      "कोई उल्लेख नहीं",
-      "कृषि आधारित",
-      "औद्योगिक व्यवस्था",
-      "सरकारी नियंत्रण नहीं"
-    ];
-
-    return pool.filter(x=>x!==answer)
-               .sort(()=>Math.random()-0.5)
-               .slice(0,2);
-  }
-
-  /* ===============================
-     UTIL
-  =============================== */
-  function shuffle(arr){
-    return arr.sort(()=>Math.random()-0.5);
-  }
-
-  /* ===============================
-     PUBLIC API
-  =============================== */
-  return {
-    registerEngine,
-    generateFromArticle
-  };
-
-})();,
+  return out;
+};
