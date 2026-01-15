@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Anjali – Universal Exam Control Panel</title>
+
+<style>
+body{margin:0;font-family:system-ui;background:#f5f6fa}
+header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20px}
+#layout{display:flex;height:calc(100vh - 60px)}
+
+#subjects{width:320px;background:#fff;border-right:1px solid #ccc;overflow:auto;padding:10px}
+#panel{flex:1;padding:10px;overflow:auto}
+
+.subject{font-weight:bold;color:#8b2d2d;margin-top:8px;cursor:pointer}
+.topic{margin-left:14px;padding:6px;border-radius:6px;cursor:pointer}
+.topic:hover{background:#eee}
+.topic.active{background:#8b2d2d;color:#fff}
+
+textarea,input{width:100%;padding:8px;margin:6px 0;border:1px solid #ccc;border-radius:6px}
+button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:#fff}
+.secondary{background:#555}
+
+.box{border:1px dashed #aaa;padding:10px;margin-top:10px;border-radius:8px;background:#fff}
+#view{max-height:300px;overflow:auto}
+</style>
+</head>
+
+<body>
+<header>📚 Anjali – Universal Exam Control Panel</header>
+
+<div id="layout">
+<div id="subjects"></div>
+
+<div id="panel">
+<h3 id="path">कोई विषय चुनें</h3>
+
+<div class="box">
+<b>📝 MCQ जोड़ें</b>
+<textarea id="q"></textarea>
+<input id="a" placeholder="A">
+<input id="b" placeholder="B">
+<input id="c" placeholder="C">
+<input id="d" placeholder="D">
+<input id="correct" placeholder="Correct (A/B/C/D)">
+<textarea id="exp" placeholder="व्याख्या"></textarea>
+<button onclick="saveOne()">Save</button>
+<button class="secondary" onclick="deleteLast()">Delete Last</button>
+</div>
+
+<div class="box">
+<b>📚 Bulk MCQ (Q | A | Explanation)</b>
+<textarea id="bulk" style="min-height:120px"></textarea>
+<button onclick="saveBulk()">Save Bulk</button>
+</div>
+
+<div class="box">
+<b>📄 Article → Exam Engine</b>
+<textarea id="article" style="min-height:140px"></textarea>
+<button onclick="generateFromArticle()">Generate MCQ</button>
+<button class="secondary" onclick="clearArticle()">Clear</button>
+</div>
+
+<div class="box">
+<button onclick="show()">📂 प्रश्न दिखें</button>
+<button onclick="speak()">🎙️ अंजली</button>
+</div>
+
+<div id="view" class="box"></div>
+</div>
+</div>
+
+<script>
+/* ================= UNIVERSAL SYLLABUS ================= */
+const SYLLABUS={
+"UP Police Constable":{
+"General Knowledge":{"A. History":[],"B. Geography":[],"C. Polity":[],"D. Economy":[],"E. Science":[],"F. Current Affairs":[]},
+"General Hindi":{"A. वर्णमाला":[],"B. संधि":[],"C. समास":[],"D. उपसर्ग":[],"E. प्रत्यय":[],"F. पर्यायवाची":[]},
+"Numerical & Mental Ability":{"A. संख्या पद्धति":[],"B. प्रतिशत":[],"C. लाभ":[],"D. औसत":[],"E. समय व कार्य":[]},
+"Mental Aptitude / Reasoning":{"A. सादृश्य":[],"B. वर्गीकरण":[],"C. श्रेणी":[],"D. कोडिंग":[],"E. रक्त संबंध":[]}
+}
+};
+
+/* ================= DATABASE ================= */
+let DB=JSON.parse(localStorage.getItem("anjaliUniversal"))||SYLLABUS;
+function saveDB(){localStorage.setItem("anjaliUniversal",JSON.stringify(DB));}
+
+/* ================= TREE ================= */
+let currentExam=null,currentSubject=null,currentTopic=null;
+const tree=document.getElementById("subjects");
+
+for(let exam in DB){
+ let h=document.createElement("h3");h.textContent=exam;tree.appendChild(h);
+ for(let sub in DB[exam]){
+  let s=document.createElement("div");s.className="subject";s.textContent=sub;
+  let list=document.createElement("div");
+  for(let t in DB[exam][sub]){
+   let tp=document.createElement("div");tp.className="topic";tp.textContent=t;
+   tp.onclick=()=>{
+    document.querySelectorAll(".topic").forEach(x=>x.classList.remove("active"));
+    tp.classList.add("active");
+    currentExam=exam;currentSubject=sub;currentTopic=t;
+    path.innerText=exam+" → "+sub+" → "+t;
+   };
+   list.appendChild(tp);
+  }
+  s.onclick=()=>list.style.display=list.style.display=="block"?"none":"block";
+  tree.appendChild(s);tree.appendChild(list);
+ }
+}
+
+/* ================= SAVE ================= */
+function saveOne(){
+ if(!currentTopic)return alert("विषय चुनें");
+ DB[currentExam][currentSubject][currentTopic].push({q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,correct:correct.value,exp:exp.value});
+ saveDB(); show();
+}
+
+function saveBulk(){
+ if(!currentTopic)return alert("विषय चुनें");
+ bulk.value.split("\n").forEach(l=>{
+  let p=l.split("|");
+  if(p.length>=3){
+   DB[currentExam][currentSubject][currentTopic].push({q:p[0],a:p[1],b:"",c:"",d:"",correct:"A",exp:p[2]});
+  }
+ });
+ saveDB(); show();
+}
+
+/* ================= VIEW ================= */
+function show(){
+ let arr=DB[currentExam][currentSubject][currentTopic];
+ view.innerHTML=arr.map((q,i)=>`${i+1}. ${q.q}<br>A)${q.a}<br>B)${q.b}<br>C)${q.c}<br>D)${q.d}<br>✔ ${q.correct}<br>📝 ${q.exp}<hr>`).join("");
+}
+
+/* ================= DELETE ================= */
+function deleteLast(){
+ DB[currentExam][currentSubject][currentTopic].pop();
+ saveDB(); show();
+}
+
+/* ================= ARTICLE ENGINE ================= */
+function generateFromArticle(){
+ if(!currentTopic)return alert("विषय चुनें");
+ let text=article.value; if(text.length<80)return alert("लेख छोटा है");
+ let facts=[];
+ if(text.includes("कृषि")&&text.includes("उद्योग")&&text.includes("सेवा"))facts.push({q:"भारतीय अर्थव्यवस्था किन क्षेत्रों पर आधारित है?",ans:"कृषि, उद्योग और सेवा"});
+ if(text.includes("रिज़र्व बैंक"))facts.push({q:"भारत की मौद्रिक नीति कौन चलाता है?",ans:"भारतीय रिज़र्व बैंक"});
+ if(text.includes("1991"))facts.push({q:"उदारीकरण कब हुआ?",ans:"1991"});
+ facts.forEach(f=>{
+  let opts=[f.ans,"कोई नहीं","लोहा आधारित","शिकार पर"];
+  opts.sort(()=>Math.random()-0.5);
+  DB[currentExam][currentSubject][currentTopic].push({q:f.q,a:opts[0],b:opts[1],c:opts[2],d:opts[3],correct:["A","B","C","D"][opts.indexOf(f.ans)],exp:f.ans});
+ });
+ saveDB(); show(); alert("MCQ बने");
+}
+function clearArticle(){article.value="";}
+
+/* ================= VOICE ================= */
+function speak(){
+ let arr=DB[currentExam][currentSubject][currentTopic];let i=0;
+ function go(){ if(i>=arr.length)return;
+  let u=new SpeechSynthesisUtterance(arr[i].q+" उत्तर "+arr[i].a);u.lang="hi-IN";speechSynthesis.speak(u);
+  i++;u.onend=()=>setTimeout(go,700);
+ } go();
+}
+</script>
+</body>
+  </html>
