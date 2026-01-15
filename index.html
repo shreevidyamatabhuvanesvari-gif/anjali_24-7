@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Anjali – Universal Exam Control Panel</title>
+
+<style>
+body{margin:0;font-family:system-ui;background:#f5f6fa}
+header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20px}
+
+#main{display:flex;height:calc(100vh - 60px)}
+
+#tree{
+  width:300px;
+  background:#fff;
+  border-right:1px solid #ddd;
+  overflow:auto;
+  padding:10px;
+}
+
+#panel{
+  flex:1;
+  padding:10px;
+  overflow:auto;
+}
+
+.subject{
+  font-weight:bold;
+  color:#8b2d2d;
+  margin-top:10px;
+  cursor:pointer;
+}
+
+.topic{
+  margin-left:14px;
+  padding:6px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.topic:hover{background:#eee}
+.topic.active{background:#8b2d2d;color:#fff}
+
+textarea,input{width:100%;padding:8px;margin:6px 0}
+button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:white}
+.secondary{background:#555}
+
+.box{
+  border:1px dashed #aaa;
+  padding:10px;
+  margin-top:10px;
+  border-radius:8px;
+  background:#fff;
+}
+</style>
+</head>
+
+<body>
+
+<header>📚 Anjali – Universal Exam Control Panel</header>
+
+<div id="main">
+
+<!-- ===== LEFT : SYLLABUS TREE ===== -->
+<div id="tree"></div>
+
+<!-- ===== RIGHT : CONTROL PANEL ===== -->
+<div id="panel">
+
+<h3 id="path">कोई विषय चुनें</h3>
+
+<div class="box">
+<b>📝 एक MCQ जोड़ें</b>
+<textarea id="q"></textarea>
+<input id="a" placeholder="Option A">
+<input id="b" placeholder="Option B">
+<input id="c" placeholder="Option C">
+<input id="d" placeholder="Option D">
+<input id="correct" placeholder="Correct (A/B/C/D)">
+<textarea id="exp" placeholder="व्याख्या"></textarea>
+
+<button onclick="MCQ.saveOne()">Save</button>
+<button class="secondary" onclick="MCQ.deleteLast()">Delete Last</button>
+</div>
+
+<div class="box">
+<b>📚 Bulk MCQ (Q | A | Explanation)</b>
+<textarea id="bulk" style="min-height:120px"></textarea>
+<button onclick="MCQ.saveBulk()">Save Bulk</button>
+</div>
+
+<div class="box">
+<b>📄 Article → Exam MCQ</b>
+<textarea id="article" style="min-height:140px"></textarea>
+<button onclick="ArticleEngine.generate()">⚡ MCQ बनाए</button>
+<button class="secondary" onclick="ArticleEngine.clear()">🧹 लेख हटाएँ</button>
+</div>
+
+<div class="box">
+<button onclick="MCQ.show()">📂 प्रश्न दिखें</button>
+<button onclick="Anjali.speak()">🎙️ अंजली</button>
+</div>
+
+<div id="view" class="box" style="min-height:200px;overflow:auto"></div>
+
+</div>
+</div>
+
+<!-- ================= CORE SYSTEM ================= -->
+<script src="js/syllabus.js"></script>
+<script src="js/core.js"></script>
+
+<!-- ================= ENGINES ================= -->
+<script src="js/engine.mcq.js"></script>
+<script src="js/engine.article.js"></script>
+<script src="js/engine.economy.js"></script>
+<script src="js/engine.history.js"></script>
+<script src="js/engine.geography.js"></script>
+<script src="js/engine.polity.js"></script>
+<script src="js/engine.science.js"></script>
+<script src="js/engine.current.js"></script>
+<script src="js/engine.hindi.js"></script>
+<script src="js/engine.reasoning.js"></script>
+<script src="js/engine.math.js"></script>
+
+<!-- ================= VOICE ================= -->
+<script src="js/anjali.voice.js"></script>
+
+</body>
+</html>
