@@ -73,9 +73,15 @@ border:1px solid #ddd;padding:10px;margin-top:8px;background:#fafafa">
 <button class="secondary" onclick="deleteLast()">Delete Last</button>
 </div>
 
+<!-- ACTIONS -->
 <div class="box">
 <button onclick="show()">👁️ प्रश्न देखें</button>
 <button onclick="speak()">🎙️ अंजली</button>
+
+<!-- ✅ NEW BUTTON ADDED -->
+<button class="secondary" onclick="openQuestionBank()">
+📚 Question Bank Manager
+</button>
 </div>
 
 <div id="view" class="box" style="min-height:340px;overflow:auto"></div>
@@ -136,6 +142,11 @@ function saveOne(){
   pattern:"Manual",
   difficulty:"Exam"
  });
+ saveDB(); show();
+}
+
+function deleteLast(){
+ DB[currentExam][currentSubject][currentTopic].pop();
  saveDB(); show();
 }
 
@@ -211,6 +222,11 @@ function speak(){
   i++;u.onend=()=>setTimeout(go,700);
  }
  go();
+}
+
+/* ===== NAVIGATION ===== */
+function openQuestionBank(){
+ window.location.href="question_bank_manager.html";
 }
 </script>
 
