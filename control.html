@@ -12,7 +12,7 @@ header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20
 #panel{flex:1;padding:10px;overflow:auto}
 
 .subject{font-weight:bold;color:#8b2d2d;margin-top:8px;cursor:pointer}
-.topic{margin-left:14px;padding:4px;border-radius:6px;cursor:pointer}
+.topic{margin-left:14px;padding:6px;border-radius:6px;cursor:pointer}
 .topic:hover{background:#eee}
 .topic.active{background:#8b2d2d;color:white}
 
@@ -21,6 +21,7 @@ button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2
 .secondary{background:#555}
 
 .box{border:1px dashed #aaa;padding:10px;margin-top:10px;border-radius:8px;background:#fff}
+.viewBox{min-height:300px;max-height:400px;overflow:auto;border:1px solid #ccc;padding:10px;background:#fafafa}
 </style>
 </head>
 
@@ -33,28 +34,24 @@ button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2
 <div id="panel">
 <h3 id="path">कोई विषय चुनें</h3>
 
-<!-- ONE LINER -->
+<!-- ARTICLE -->
 <div class="box">
-<b>🧠 Article → One-Liner</b>
-<textarea id="article" style="min-height:140px" placeholder="यहाँ लेख पेस्ट करें…"></textarea>
+<b>📄 Article</b>
+<textarea id="article" style="min-height:150px" placeholder="यहाँ लेख पेस्ट करें…"></textarea>
 <button onclick="generateOneLiners()">🔹 One-Liner बनाए</button>
-<button class="secondary" onclick="saveOneLiners()">💾 One-Liner Save</button>
-
-<div id="oneLinerView"
-style="min-height:300px; max-height:400px; overflow:auto;
-border:1px solid #ddd;padding:10px;margin-top:8px;background:#fafafa">
-</div>
+<button onclick="generateFromArticle()">⚡ Exam MCQ बनाए</button>
 </div>
 
-<!-- ARTICLE → EXAM MCQ -->
+<!-- ONE LINERS -->
 <div class="box">
-<b>📄 Article → Exam MCQ</b>
-<button onclick="generateFromArticle()">⚡ MCQ बनाए</button>
+<b>🧠 One-Liners (सहेजे नहीं मिटेंगे)</b>
+<div id="oneLinerView" class="viewBox"></div>
+<button onclick="saveOneLiners()">💾 One-Liners Save</button>
 </div>
 
-<!-- MCQ -->
+<!-- MANUAL MCQ -->
 <div class="box">
-<b>📝 MCQ जोड़ें</b>
+<b>📝 एक MCQ जोड़ें</b>
 <textarea id="q"></textarea>
 <input id="a" placeholder="A">
 <input id="b" placeholder="B">
@@ -63,22 +60,28 @@ border:1px solid #ddd;padding:10px;margin-top:8px;background:#fafafa">
 <input id="correct" placeholder="Correct (A/B/C/D)">
 <textarea id="exp" placeholder="व्याख्या"></textarea>
 <button onclick="saveOne()">Save</button>
-<button class="secondary" onclick="deleteLast()">Delete</button>
+<button class="secondary" onclick="deleteLast()">Delete Last</button>
 </div>
 
 <!-- BULK -->
 <div class="box">
-<b>📚 Bulk MCQ (Q | A | Explanation)</b>
-<textarea id="bulk" style="min-height:120px"></textarea>
+<b>📚 Bulk (प्रश्न → उत्तर → व्याख्या)</b>
+<textarea id="bulk" style="min-height:120px" placeholder="प्रश्न
+उत्तर
+व्याख्या
+
+प्रश्न
+उत्तर
+व्याख्या"></textarea>
 <button onclick="saveBulk()">Save Bulk</button>
 </div>
 
 <div class="box">
-<button onclick="show()">📂 प्रश्न देखें</button>
+<button onclick="show()">📂 सभी प्रश्न देखें</button>
 <button onclick="speak()">🎙️ अंजली</button>
 </div>
 
-<div id="view" class="box" style="min-height:300px;overflow:auto"></div>
+<div id="view" class="viewBox"></div>
 </div>
 </div>
 
@@ -113,8 +116,7 @@ for(let exam in DB){
     t.classList.add("active");
     currentExam=exam;currentSubject=subject;currentTopic=topic;
     path.innerText=exam+" → "+subject+" → "+topic;
-    show();
-    showOneLiners();
+    show(); showOneLiners();
    };
    list.appendChild(t);
   }
@@ -127,22 +129,22 @@ for(let exam in DB){
 function saveOne(){
  if(!currentTopic)return alert("विषय चुनें");
  DB[currentExam][currentSubject][currentTopic].push({
-  q:q.value.trim(),a:a.value.trim(),b:b.value.trim(),
-  c:c.value.trim(),d:d.value.trim(),correct:correct.value.trim(),exp:exp.value.trim()
+  q:q.value.trim(),a:a.value.trim(),b:b.value.trim(),c:c.value.trim(),d:d.value.trim(),
+  correct:correct.value.trim(),exp:exp.value.trim()
  });
  saveDB(); show();
 }
 
 function saveBulk(){
  if(!currentTopic)return alert("विषय चुनें");
- bulk.value.split("\n").forEach(l=>{
-  let p=l.split("|").map(x=>x.trim());
-  if(p.length>=3){
+ const lines=bulk.value.split("\n").map(x=>x.trim()).filter(x=>x!=="");
+ for(let i=0;i<lines.length;i+=3){
+  if(lines[i]&&lines[i+1]&&lines[i+2]){
    DB[currentExam][currentSubject][currentTopic].push({
-    q:p[0],a:p[1],b:"",c:"",d:"",correct:"A",exp:p[2]
+    q:lines[i],a:lines[i+1],b:"",c:"",d:"",correct:"A",exp:lines[i+2]
    });
   }
- });
+ }
  saveDB(); show(); alert("Bulk Saved");
 }
 
@@ -167,67 +169,60 @@ function generateOneLiners(){
  if(!currentTopic)return alert("विषय चुनें");
  const text=article.value.trim();
  if(text.length<80)return alert("लेख छोटा है");
- tempOneLiners=[];
  text.split(/[।.\n]/).forEach(l=>{
   l=l.trim();
-  if(l.length>25 && l.length<200) tempOneLiners.push(l);
+  if(l.length>25&&l.length<200) tempOneLiners.push(l);
  });
- oneLinerView.innerHTML=tempOneLiners.map((l,i)=>`${i+1}. ${l}<hr>`).join("");
+ showOneLiners();
+}
+
+function showOneLiners(){
+ let saved=DB[currentExam][currentSubject][currentTopic].filter(q=>q.exp==="One-Liner").map(x=>x.q);
+ let all=[...saved,...tempOneLiners];
+ oneLinerView.innerHTML=all.map((l,i)=>`${i+1}. ${l}<hr>`).join("");
 }
 
 function saveOneLiners(){
  tempOneLiners.forEach(l=>{
-  DB[currentExam][currentSubject][currentTopic].push({
-    q:l,a:"",b:"",c:"",d:"",correct:"",exp:"One-Liner"
-  });
+  DB[currentExam][currentSubject][currentTopic].push({q:l,a:"",b:"",c:"",d:"",correct:"",exp:"One-Liner"});
  });
- saveDB();
- tempOneLiners=[];
- showOneLiners();   // 🔥 अब DB से दिखेगा
- alert("One-Liners Saved");
+ saveDB(); tempOneLiners=[]; showOneLiners(); alert("One-Liners Saved");
 }
 
-function showOneLiners(){
- if(!currentTopic)return;
- let arr=DB[currentExam][currentSubject][currentTopic].filter(q=>q.exp==="One-Liner");
- oneLinerView.innerHTML=arr.map((q,i)=>`${i+1}. ${q.q}<hr>`).join("");
-}
-
-/* ===== ARTICLE → ENGINE ===== */
+/* ===== SIMPLE EXAM ENGINE ===== */
 function generateFromArticle(){
  if(!currentTopic)return alert("विषय चुनें");
- const articleText=article.value.trim();
- if(articleText.length<80)return alert("लेख छोटा है");
+ const t=article.value;
+ if(!t.includes("1991")&&!t.includes("RBI"))return alert("लेख से तथ्य नहीं मिले");
 
- const context=currentSubject+"."+currentTopic;
- const facts=extractExamFacts(articleText,context);
-
- if(!facts||facts.length===0)return alert("Exam-level facts नहीं मिले");
-
- facts.forEach(f=>{
+ if(t.includes("1991")){
   DB[currentExam][currentSubject][currentTopic].push({
-    q:f.q,a:f.options[0],b:f.options[1],c:f.options[2],d:f.options[3],
-    correct:f.correct,exp:f.explain
+   q:"भारत में आर्थिक उदारीकरण कब लागू हुआ?",
+   a:"1991",b:"1947",c:"2000",d:"2010",correct:"A",exp:"उदारीकरण 1991 में लागू हुआ"
   });
- });
- saveDB(); show();
- alert("Exam MCQ बन गए");
+ }
+
+ if(t.includes("RBI")){
+  DB[currentExam][currentSubject][currentTopic].push({
+   q:"भारत की मौद्रिक नीति कौन संचालित करता है?",
+   a:"RBI",b:"सरकार",c:"SEBI",d:"WTO",correct:"A",exp:"RBI मौद्रिक नीति चलाता है"
+  });
+ }
+
+ saveDB(); show(); alert("Exam MCQ बन गए");
 }
 
 /* ===== VOICE ===== */
 function speak(){
- let arr=DB[currentExam][currentSubject][currentTopic];
- let i=0;
+ let arr=DB[currentExam][currentSubject][currentTopic]; let i=0;
  function go(){
   if(i>=arr.length)return;
   let u=new SpeechSynthesisUtterance(arr[i].q);
   u.lang="hi-IN"; speechSynthesis.speak(u);
-  i++;u.onend=()=>setTimeout(go,700);
+  i++;u.onend=()=>setTimeout(go,800);
  }
  go();
 }
 </script>
-
-<script src="engine.js"></script>
 </body>
 </html>
