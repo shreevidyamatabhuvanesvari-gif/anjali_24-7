@@ -18,7 +18,6 @@ header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20
 .topic.active{background:#8b2d2d;color:#fff}
 
 .box{border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:10px;background:#fff}
-textarea,input{width:100%;padding:6px;margin:4px 0}
 button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:#fff;cursor:pointer}
 .secondary{background:#555}
 hr{border:none;border-top:1px dashed #ccc;margin:8px 0}
@@ -38,63 +37,28 @@ hr{border:none;border-top:1px dashed #ccc;margin:8px 0}
 <h3 id="path">कोई विषय चुनें</h3>
 
 <div class="box">
-<b>📝 MCQ जोड़ें</b>
-<textarea id="q" placeholder="प्रश्न"></textarea>
-<input id="a" placeholder="Option A">
-<input id="b" placeholder="Option B">
-<input id="c" placeholder="Option C">
-<input id="d" placeholder="Option D">
-<input id="correct" placeholder="Correct (A/B/C/D)">
-<textarea id="exp" placeholder="व्याख्या"></textarea>
-<button onclick="saveMCQ()">Save MCQ</button>
-<button class="secondary" onclick="deleteLast()">Delete Last</button>
-</div>
-
-<div class="box">
-<b>📚 Bulk MCQ (हर लाइन = प्रश्न)</b>
-<textarea id="bulk"></textarea>
-<button onclick="saveBulk()">Save Bulk</button>
+<b>📘 Quiz Bank (MCQ)</b>
+<div id="mcqView"></div>
 </div>
 
 <div class="box">
 <b>📌 One-Liner / Notes</b>
-<textarea id="one"></textarea>
-<button onclick="saveOne()">Save One-Liner</button>
+<div id="oneView"></div>
 </div>
 
 <div class="box">
-<button onclick="show()">👁️ सभी प्रश्न देखें</button>
+<b>📚 Combined View</b>
+<div id="allView"></div>
 </div>
 
-<div id="view" class="box" style="min-height:300px;overflow:auto"></div>
 </div>
 </div>
 
 <script>
-/* ================= SYLLABUS (MATCHED) ================= */
+/* ================= DATABASE (SAME AS CONTROL PANEL) ================= */
 
-const AtoZ = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-const SYLLABUS = {
- "UP Police Constable":{
-  "General Knowledge":{
-   "A. History":[],
-   "B. Geography":[],
-   "C. Polity":[],
-   "D. Economy":[],
-   "E. Science":[],
-   "F. Current Affairs":[]
-  },
-  "General Hindi":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
-  "Numerical & Mental Ability":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
-  "Mental Aptitude / Reasoning":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]]))
- }
-};
-
-/* ================= DATABASE ================= */
-
-let DB = JSON.parse(localStorage.getItem("QB_MANAGER")) || SYLLABUS;
-function saveDB(){ localStorage.setItem("QB_MANAGER", JSON.stringify(DB)); }
+let DB = JSON.parse(localStorage.getItem("anjaliDB")) || {};
+function saveDB(){ localStorage.setItem("anjaliDB", JSON.stringify(DB)); }
 
 /* ================= TREE ================= */
 
@@ -125,7 +89,7 @@ for(let exam in DB){
     currentSubject=subject;
     currentTopic=topic;
     path.textContent=exam+" → "+subject+" → "+topic;
-    show();
+    renderAll();
    };
    list.appendChild(t);
   }
@@ -136,65 +100,40 @@ for(let exam in DB){
  }
 }
 
-/* ================= SAVE ================= */
+/* ================= RENDER ================= */
 
-function saveMCQ(){
- if(!currentTopic) return alert("विषय चुनें");
- DB[currentExam][currentSubject][currentTopic].push({
-  type:"mcq",
-  q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,
-  correct:correct.value,
-  exp:exp.value
- });
- saveDB(); show();
-}
-
-function saveBulk(){
- if(!currentTopic) return alert("विषय चुनें");
- bulk.value.split("\n").forEach(line=>{
-  if(line.trim()){
-   DB[currentExam][currentSubject][currentTopic].push({
-    type:"mcq",
-    q:line.trim(),
-    a:"",b:"",c:"",d:"",
-    correct:"",
-    exp:""
-   });
-  }
- });
- saveDB(); show();
-}
-
-function saveOne(){
- if(!currentTopic) return alert("विषय चुनें");
- DB[currentExam][currentSubject][currentTopic].push({
-  type:"one-liner",
-  q:one.value
- });
- saveDB(); show();
-}
-
-function deleteLast(){
+function renderAll(){
  if(!currentTopic) return;
- DB[currentExam][currentSubject][currentTopic].pop();
- saveDB(); show();
-}
 
-/* ================= VIEW ================= */
+ let data = DB[currentExam][currentSubject][currentTopic] || [];
 
-function show(){
- let arr=DB[currentExam][currentSubject][currentTopic];
- view.innerHTML=arr.map((x,i)=>{
+ let mcqs = data.filter(x=>x.type==="mcq");
+ let ones = data.filter(x=>x.type==="one-liner");
+
+ mcqView.innerHTML = mcqs.map((q,i)=>`
+  <b>${i+1}. ${q.q}</b><br>
+  A) ${q.a} B) ${q.b}<br>
+  C) ${q.c} D) ${q.d}<br>
+  ✔ ${q.correct}<br>
+  <i>${q.exp}</i><hr>
+ `).join("") || "<i>कोई MCQ नहीं</i>";
+
+ oneView.innerHTML = ones.map((o,i)=>`
+  ${i+1}. ${o.q}<hr>
+ `).join("") || "<i>कोई One-Liner नहीं</i>";
+
+ allView.innerHTML = data.map((x,i)=>{
   if(x.type==="one-liner"){
-   return `<b>${i+1}. ${x.q}</b><hr>`;
+   return `${i+1}. ${x.q}<hr>`;
   }
   return `
-  <b>${i+1}. ${x.q}</b><br>
-  A) ${x.a} B) ${x.b}<br>
-  C) ${x.c} D) ${x.d}<br>
-  ✔ ${x.correct}<br>
-  <i>${x.exp}</i><hr>`;
- }).join("");
+   <b>${i+1}. ${x.q}</b><br>
+   A) ${x.a} B) ${x.b}<br>
+   C) ${x.c} D) ${x.d}<br>
+   ✔ ${x.correct}<br>
+   <i>${x.exp}</i><hr>
+  `;
+ }).join("") || "<i>कोई डेटा नहीं</i>";
 }
 </script>
 </body>
