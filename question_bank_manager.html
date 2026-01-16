@@ -178,7 +178,7 @@ function toggleVoice(){
  }
 }
 
-/* ---- शिक्षिका जैसी आवाज़ से प्रश्न पढ़ना और यूज़र से उत्तर सुनना ---- */
+/* ---- शिक्षिका जैसी आवाज़ से प्रश्न पढ़ना और उत्तर सुनना ---- */
 function readQuestionsInteractive(){
  if(!currentData.length){ return; }
  synth.cancel();
@@ -200,13 +200,18 @@ function readQuestionsInteractive(){
    }
    let q = currentData[i];
    let text = `प्रश्न ${i+1}. ${q.q}. विकल्प हैं — A) ${q.a}, B) ${q.b}, C) ${q.c}, D) ${q.d}. अब बताइए सही उत्तर क्या है?`;
+   
    speak(text, femaleVoice, ()=>{
-     listenOnce(answer=>{
+     listenOnce(15, answer=>{
        let correct = q.correct || "";
-       if(answer.toLowerCase().includes(correct.toLowerCase())){
-         speak(`बहुत बढ़िया! आपका उत्तर सही है।`, femaleVoice, ()=>next());
+       if(answer){
+         if(answer.toLowerCase().includes(correct.toLowerCase())){
+           speak(`बहुत बढ़िया! आपका उत्तर सही है।`, femaleVoice, ()=>next());
+         } else {
+           speak(`गलत उत्तर। सही उत्तर है ${correct}. ${q.exp? "व्याख्या: "+q.exp : ""}`, femaleVoice, ()=>next());
+         }
        } else {
-         speak(`गलत उत्तर। सही उत्तर है ${correct}. ${q.exp? "व्याख्या: "+q.exp : ""}`, femaleVoice, ()=>next());
+         speak(`समय समाप्त। सही उत्तर है ${correct}. ${q.exp? "व्याख्या: "+q.exp : ""}`, femaleVoice, ()=>next());
        }
      });
    });
@@ -214,7 +219,7 @@ function readQuestionsInteractive(){
 
  function next(){
    i++;
-   setTimeout(speakAndListen,1500);
+   setTimeout(speakAndListen,2000);
  }
 
  speakAndListen();
@@ -226,20 +231,36 @@ function speak(text, voice, cb){
  utter.lang='hi-IN';
  utter.voice = voice;
  utter.rate = 1;
- utter.pitch = 1.1;
+ utter.pitch = 1.05;
  utter.onend = ()=>cb && cb();
  synth.speak(utter);
 }
 
-/* ---- आवाज़ से सुनना ---- */
-function listenOnce(callback){
+/* ---- आवाज़ से सुनना (15 सेकंड टाइमआउट सहित) ---- */
+function listenOnce(timeoutSec, callback){
  if(!recognition) return;
+ let answered = false;
  recognition.start();
+
+ let timer = setTimeout(()=>{
+   if(!answered){
+     recognition.stop();
+     callback("");
+   }
+ }, timeoutSec * 1000);
+
  recognition.onresult = (event)=>{
+   answered = true;
+   clearTimeout(timer);
    let ans = event.results[0][0].transcript;
+   recognition.stop();
    callback(ans);
  };
- recognition.onerror = ()=>callback("");
+
+ recognition.onerror = ()=>{
+   clearTimeout(timer);
+   callback("");
+ };
 }
 </script>
 </body>
