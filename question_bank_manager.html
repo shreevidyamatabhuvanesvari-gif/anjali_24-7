@@ -127,7 +127,7 @@ function isValidMCQ(q){
 /* ---- विषय बदलने पर डेटा रेंडर करना ---- */
 function renderAll(){
  let arr=DB[currentExam][currentSubject][currentTopic]||[];
- currentData = arr; // Voice में काम आएगा
+ currentData = arr; 
  document.getElementById("content").innerHTML =
    "<i>कोई विकल्प चुनें ताकि प्रश्न देखें।</i>";
 }
@@ -186,7 +186,6 @@ function readQuestionsInteractive(){
  let voices = synth.getVoices();
  let femaleVoice = voices.find(v=>v.name.includes('Google हिन्दी महिला') || v.name.includes('Female')) || voices[0];
 
- // SpeechRecognition सेटअप
  window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
  recognition = new SpeechRecognition();
  recognition.lang = 'hi-IN';
@@ -198,29 +197,28 @@ function readQuestionsInteractive(){
      speak("सभी प्रश्न समाप्त हो गए। बहुत अच्छा किया!", femaleVoice);
      return; 
    }
+
    let q = currentData[i];
    let text = `प्रश्न ${i+1}. ${q.q}. विकल्प हैं — A) ${q.a}, B) ${q.b}, C) ${q.c}, D) ${q.d}. अब बताइए सही उत्तर क्या है?`;
    
    speak(text, femaleVoice, ()=>{
      listenOnce(15, answer=>{
-       let correct = q.correct ? q.correct.toLowerCase().trim() : "";
+       let correct = q.correct ? q.correct.trim().toUpperCase() : "";
        let exp = q.exp || "कोई व्याख्या उपलब्ध नहीं है।";
+       let userAnswer = normalizeAnswer(answer);
 
-       if(!answer){  // कोई जवाब नहीं मिला
+       if(!userAnswer){  
          speak(`समय समाप्त। मैं सही उत्तर और व्याख्या बता रही हूँ, इसे याद कर लेना।`, femaleVoice, ()=>{
            speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
          });
+       } else if(userAnswer === correct){
+         speak(`आपका उत्तर सही है, बहुत अच्छा।`, femaleVoice, ()=>{
+           speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
+         });
        } else {
-         answer = answer.toLowerCase().trim();
-         if(answer.includes(correct.toLowerCase()) || answer === correct.toLowerCase()){
-           speak(`आपका उत्तर सही है, बहुत अच्छा।`, femaleVoice, ()=>{
-             speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
-           });
-         } else {
-           speak(`मैं सही उत्तर और व्याख्या बता रही हूँ, इसे याद कर लेना।`, femaleVoice, ()=>{
-             speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
-           });
-         }
+         speak(`मैं सही उत्तर और व्याख्या बता रही हूँ, इसे याद कर लेना।`, femaleVoice, ()=>{
+           speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
+         });
        }
      });
    });
@@ -232,6 +230,26 @@ function readQuestionsInteractive(){
  }
 
  speakAndListen();
+}
+
+/* ---- उपयोगकर्ता के बोले गए उत्तर को सामान्य बनाना ---- */
+function normalizeAnswer(ans){
+ if(!ans) return "";
+ ans = ans.toLowerCase().trim();
+
+ // हिन्दी और अंग्रेज़ी शब्दों को मानक A/B/C/D में बदलना
+ if(ans.includes("ए") || ans.includes("a")) return "A";
+ if(ans.includes("बी") || ans.includes("b")) return "B";
+ if(ans.includes("सी") || ans.includes("c")) return "C";
+ if(ans.includes("डी") || ans.includes("d")) return "D";
+
+ // fallback
+ if(ans.includes("पहला")) return "A";
+ if(ans.includes("दूसरा")) return "B";
+ if(ans.includes("तीसरा")) return "C";
+ if(ans.includes("चौथा")) return "D";
+
+ return "";
 }
 
 /* ---- आवाज़ से बोलना ---- */
