@@ -19,6 +19,7 @@ header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20
 textarea,input{width:100%;padding:8px;margin:6px 0}
 button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:white}
 .secondary{background:#555}
+.danger{background:#b00020}
 
 .box{border:1px dashed #aaa;padding:10px;margin-top:10px;border-radius:8px;background:#fff}
 .small{font-size:13px;color:#555}
@@ -41,13 +42,20 @@ button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2
 
 <button onclick="generateOneLiners()">🔹 One-Liner बनाए</button>
 <button onclick="saveOneLiners()" class="secondary">💾 One-Liner Save</button>
-
 <button onclick="generateFromArticle()">⚡ Exam-Grade MCQ बनाए</button>
 
 <div id="oneLinerView"
 style="min-height:220px;max-height:300px;overflow:auto;
 border:1px solid #ddd;padding:10px;margin-top:8px;background:#fafafa">
 </div>
+</div>
+
+<!-- FILTER -->
+<div class="box">
+<b>🔍 Filter</b><br>
+<button onclick="setFilter('all')">सभी</button>
+<button onclick="setFilter('mcq')">केवल MCQ</button>
+<button onclick="setFilter('one-liner')">केवल One-Liner</button>
 </div>
 
 <!-- MANUAL MCQ -->
@@ -65,49 +73,33 @@ border:1px solid #ddd;padding:10px;margin-top:8px;background:#fafafa">
 <button class="secondary" onclick="deleteLast()">Delete Last</button>
 </div>
 
-<!-- BULK -->
 <div class="box">
-<b>📚 Bulk MCQ</b>
-<div class="small">
-हर लाइन ऐसे लिखें:<br>
-प्रश्न ?<br>
-या<br>
-प्रश्न ? उत्तर व्याख्या सहित
-</div>
-<textarea id="bulk" style="min-height:120px"></textarea>
-<button onclick="saveBulk()">Save Bulk</button>
-</div>
-
-<div class="box">
-<button onclick="show()">👁️ सभी प्रश्न देखें</button>
+<button onclick="show()">👁️ प्रश्न देखें</button>
 <button onclick="speak()">🎙️ अंजली</button>
 </div>
 
-<div id="view" class="box" style="min-height:320px;overflow:auto"></div>
+<div id="view" class="box" style="min-height:340px;overflow:auto"></div>
 </div>
 </div>
 
 <script>
-/* ===== SYLLABUS ===== */
+/* ===== DATABASE ===== */
 const AtoZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const SYLLABUS={
 "UP Police Constable":{
- "General Knowledge":{
-   "A. History":[], "B. Geography":[], "C. Polity":[],
-   "D. Economy":[], "E. Science":[], "F. Current Affairs":[]
- },
+ "General Knowledge":{"A. History":[], "B. Geography":[], "C. Polity":[], "D. Economy":[], "E. Science":[], "F. Current Affairs":[]},
  "General Hindi":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
  "Numerical & Mental Ability":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
  "Mental Aptitude / Reasoning":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]]))
 }
 };
 
-/* ===== DATABASE ===== */
 let DB=JSON.parse(localStorage.getItem("anjaliDB"))||SYLLABUS;
 function saveDB(){localStorage.setItem("anjaliDB",JSON.stringify(DB));}
 
 /* ===== TREE ===== */
 let currentExam=null,currentSubject=null,currentTopic=null;
+let filterMode="all";
 const tree=document.getElementById("tree");
 
 for(let exam in DB){
@@ -131,51 +123,38 @@ for(let exam in DB){
  }
 }
 
+/* ===== FILTER ===== */
+function setFilter(f){ filterMode=f; show(); }
+
 /* ===== SAVE MCQ ===== */
 function saveOne(){
- if(!currentTopic)return alert("विषय चुनें");
  DB[currentExam][currentSubject][currentTopic].push({
   type:"mcq",
-  q:q.value.trim(),a:a.value,b:b.value,c:c.value,d:d.value,
-  correct:correct.value,exp:exp.value,
-  difficulty:"Manual",pattern:"Manual"
+  q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,
+  correct:correct.value,
+  exp:exp.value,
+  pattern:"Manual",
+  difficulty:"Exam"
  });
  saveDB(); show();
 }
 
-/* ===== BULK ===== */
-function saveBulk(){
- if(!currentTopic)return alert("विषय चुनें");
- bulk.value.split("\n").forEach(line=>{
-  let text=line.trim();
-  if(text.length<10)return;
-  DB[currentExam][currentSubject][currentTopic].push({
-    type:"one-liner",
-    q:text
-  });
- });
- saveDB(); show(); showOneLiners();
- alert("Bulk Saved");
-}
-
-/* ===== DELETE ===== */
-function deleteLast(){
- DB[currentExam][currentSubject][currentTopic].pop();
- saveDB(); show(); showOneLiners();
-}
-
 /* ===== VIEW ===== */
 function show(){
- if(!currentTopic)return;
- let arr=DB[currentExam][currentSubject][currentTopic].filter(x=>x.type==="mcq");
+ let arr=DB[currentExam][currentSubject][currentTopic];
+ if(filterMode!=="all") arr=arr.filter(x=>x.type===filterMode);
  view.innerHTML=arr.map((q,i)=>`
- <div style="border:1px solid #ccc;padding:10px;margin:10px 0;border-radius:8px;background:#fff">
+ <div style="border:1px solid #ccc;padding:10px;margin:10px 0;border-radius:8px">
  <b>${i+1}. ${q.q}</b><br><br>
- A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br><br>
- ✔ <b>${q.correct}</b><br>
- 🧠 Difficulty: ${q.difficulty||"-"}<br>
- 📘 Pattern: ${q.pattern||"-"}<br>
- <i>📝 ${q.exp||""}</i>
+ ${q.type==="mcq" ? `
+ A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>
+ ✔ ${q.correct}<br>
+ <i>${q.exp}</i><br>
+ <small>Pattern: ${q.pattern} | Difficulty: ${q.difficulty}</small>
+ ` : `
+ <i>One-Liner</i>
+ <button class="danger" onclick="deleteOneLiner(${i})">🗑️ Delete</button>
+ `}
  </div>
  `).join("");
 }
@@ -183,53 +162,42 @@ function show(){
 /* ===== ONE LINER ===== */
 let tempOneLiners=[];
 function generateOneLiners(){
- if(!currentTopic)return alert("विषय चुनें");
  const text=article.value.trim();
- if(text.length<80)return alert("लेख छोटा है");
  tempOneLiners=[];
  text.split(/[।.\n]/).forEach(l=>{
   l=l.trim();
-  if(l.length>25 && l.length<220) tempOneLiners.push(l);
+  if(l.length>25) tempOneLiners.push(l);
  });
- oneLinerView.innerHTML=tempOneLiners.map((l,i)=>`${i+1}. ${l}<hr>`).join("");
+ oneLinerView.innerHTML=tempOneLiners.map(l=>`• ${l}<hr>`).join("");
 }
 function saveOneLiners(){
  tempOneLiners.forEach(l=>{
-  DB[currentExam][currentSubject][currentTopic].push({
-    type:"one-liner", q:l
-  });
+  DB[currentExam][currentSubject][currentTopic].push({type:"one-liner",q:l});
  });
- saveDB();
- tempOneLiners=[];
- showOneLiners();
- alert("One-Liners Saved");
+ saveDB(); tempOneLiners=[]; showOneLiners();
 }
 function showOneLiners(){
- if(!currentTopic)return;
  let arr=DB[currentExam][currentSubject][currentTopic].filter(x=>x.type==="one-liner");
- oneLinerView.innerHTML=arr.map((q,i)=>`${i+1}. ${q.q}<hr>`).join("");
+ oneLinerView.innerHTML=arr.map(l=>`• ${l.q}<hr>`).join("");
+}
+function deleteOneLiner(i){
+ DB[currentExam][currentSubject][currentTopic].splice(i,1);
+ saveDB(); show(); showOneLiners();
 }
 
-/* ===== ARTICLE → ENGINE ===== */
+/* ===== ENGINE ===== */
 function generateFromArticle(){
- if(!currentTopic)return alert("विषय चुनें");
  const text=article.value.trim();
- if(text.length<80)return alert("लेख छोटा है");
-
- const context=currentSubject+"."+currentTopic;
-
- const facts = extractExamFacts(text, context);
- if(!facts || facts.length===0) return alert("Exam facts नहीं मिले");
-
- const mcqs = convertFactsToMCQ(facts);
-
+ const ctx=currentSubject+"."+currentTopic;
+ const facts=extractExamFacts(text,ctx);
+ const mcqs=convertFactsToMCQ(facts);
  mcqs.forEach(m=>{
   m.type="mcq";
+  m.pattern="Engine";
+  m.difficulty="Exam";
   DB[currentExam][currentSubject][currentTopic].push(m);
  });
-
  saveDB(); show();
- alert("Exam-Grade MCQ बन गए");
 }
 
 /* ===== VOICE ===== */
