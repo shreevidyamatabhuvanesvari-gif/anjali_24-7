@@ -17,10 +17,9 @@ header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20
 .topic:hover{background:#eee}
 .topic.active{background:#8b2d2d;color:#fff}
 
-.box{border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:10px;background:#fff}
-button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:#fff;cursor:pointer}
-.secondary{background:#555}
+.box{border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:12px;background:#fff}
 hr{border:none;border-top:1px dashed #ccc;margin:8px 0}
+.small{font-size:13px;color:#555}
 </style>
 </head>
 
@@ -55,13 +54,11 @@ hr{border:none;border-top:1px dashed #ccc;margin:8px 0}
 </div>
 
 <script>
-/* ================= DATABASE (SAME AS CONTROL PANEL) ================= */
-
+/* ================= DATABASE ================= */
+/* Same DB as Control Panel */
 let DB = JSON.parse(localStorage.getItem("anjaliDB")) || {};
-function saveDB(){ localStorage.setItem("anjaliDB", JSON.stringify(DB)); }
 
 /* ================= TREE ================= */
-
 let currentExam=null,currentSubject=null,currentTopic=null;
 const tree=document.getElementById("tree");
 
@@ -100,6 +97,16 @@ for(let exam in DB){
  }
 }
 
+/* ================= HELPERS ================= */
+
+function isValidMCQ(q){
+ return q.type==="mcq" &&
+        q.q &&
+        q.a && q.b && q.c && q.d &&
+        q.correct &&
+        ["A","B","C","D"].includes(q.correct);
+}
+
 /* ================= RENDER ================= */
 
 function renderAll(){
@@ -107,34 +114,45 @@ function renderAll(){
 
  let data = DB[currentExam][currentSubject][currentTopic] || [];
 
- let mcqs = data.filter(x=>x.type==="mcq");
+ let mcqs = data.filter(isValidMCQ);
  let ones = data.filter(x=>x.type==="one-liner");
 
- mcqView.innerHTML = mcqs.map((q,i)=>`
+ /* ---- MCQ VIEW ---- */
+ mcqView.innerHTML = mcqs.length ? mcqs.map((q,i)=>`
   <b>${i+1}. ${q.q}</b><br>
-  A) ${q.a} B) ${q.b}<br>
-  C) ${q.c} D) ${q.d}<br>
-  ✔ ${q.correct}<br>
-  <i>${q.exp}</i><hr>
- `).join("") || "<i>कोई MCQ नहीं</i>";
+  A) ${q.a}<br>
+  B) ${q.b}<br>
+  C) ${q.c}<br>
+  D) ${q.d}<br>
+  ✔ <b>${q.correct}</b><br>
+  <i>${q.exp || ""}</i>
+  <div class="small">Pattern: ${q.pattern || "-"} | Difficulty: ${q.difficulty || "-"}</div>
+  <hr>
+ `).join("") : "<i>कोई वैध MCQ नहीं</i>";
 
- oneView.innerHTML = ones.map((o,i)=>`
+ /* ---- ONE-LINER VIEW ---- */
+ oneView.innerHTML = ones.length ? ones.map((o,i)=>`
   ${i+1}. ${o.q}<hr>
- `).join("") || "<i>कोई One-Liner नहीं</i>";
+ `).join("") : "<i>कोई One-Liner नहीं</i>";
 
- allView.innerHTML = data.map((x,i)=>{
+ /* ---- COMBINED VIEW ---- */
+ allView.innerHTML = data.length ? data.map((x,i)=>{
+  if(isValidMCQ(x)){
+   return `
+    <b>${i+1}. ${x.q}</b><br>
+    A) ${x.a} &nbsp; B) ${x.b}<br>
+    C) ${x.c} &nbsp; D) ${x.d}<br>
+    ✔ ${x.correct}<br>
+    <i>${x.exp || ""}</i><hr>
+   `;
+  }
   if(x.type==="one-liner"){
    return `${i+1}. ${x.q}<hr>`;
   }
-  return `
-   <b>${i+1}. ${x.q}</b><br>
-   A) ${x.a} B) ${x.b}<br>
-   C) ${x.c} D) ${x.d}<br>
-   ✔ ${x.correct}<br>
-   <i>${x.exp}</i><hr>
-  `;
- }).join("") || "<i>कोई डेटा नहीं</i>";
+  return "";
+ }).join("") : "<i>कोई डेटा नहीं</i>";
 }
 </script>
+
 </body>
 </html>
