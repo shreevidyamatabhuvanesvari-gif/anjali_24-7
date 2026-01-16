@@ -10,17 +10,12 @@ header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20
 #layout{display:flex;height:calc(100vh - 60px)}
 #tree{width:340px;background:#fff;border-right:1px solid #ddd;overflow:auto;padding:10px}
 #panel{flex:1;padding:10px;overflow:auto}
-
 .subject{font-weight:bold;color:#8b2d2d;margin-top:8px;cursor:pointer}
 .topic{margin-left:14px;padding:4px;border-radius:6px;cursor:pointer}
-.topic:hover{background:#eee}
-.topic.active{background:#8b2d2d;color:white}
-
-textarea{width:100%;min-height:180px;padding:8px;margin:6px 0}
-button{padding:6px 14px;margin:4px;border:none;border-radius:6px;background:#8b2d2d;color:white;cursor:pointer}
-.secondary{background:#555}
+.topic.active{background:#8b2d2d;color:#fff}
+textarea{width:100%;min-height:180px;padding:8px}
+button{padding:6px 14px;margin:4px;border:none;border-radius:6px;background:#8b2d2d;color:#fff}
 .danger{background:#b00020}
-
 .box{border:1px dashed #aaa;padding:10px;margin-top:10px;border-radius:8px;background:#fff}
 .big{min-height:220px;overflow:auto}
 .item{border-bottom:1px dashed #ccc;padding:6px 0}
@@ -36,25 +31,25 @@ button{padding:6px 14px;margin:4px;border:none;border-radius:6px;background:#8b2
 <div id="panel">
 <h3 id="path">कोई विषय चुनें</h3>
 
-<!-- ================= QUIZ ================= -->
+<!-- QUIZ -->
 <div class="box">
 <b>📘 Quiz Bank (Bulk MCQ)</b>
-<textarea id="quizBox" placeholder="यहाँ कई MCQ पेस्ट करें…"></textarea>
+<textarea id="quizBox"></textarea>
 <button onclick="addQuiz()">➕ Question Bank में जोड़ें</button>
 <button class="danger" onclick="deleteSelected('mcq')">🗑️ चुने हुए Delete</button>
 <div id="quizPreview" class="big"></div>
 </div>
 
-<!-- ================= ONE LINER ================= -->
+<!-- ONE LINER -->
 <div class="box">
 <b>📌 One-Liner / Notes</b>
-<textarea id="oneBox" placeholder="हर लाइन = एक One-Liner"></textarea>
+<textarea id="oneBox"></textarea>
 <button onclick="addOne()">➕ Question Bank में जोड़ें</button>
 <button class="danger" onclick="deleteSelected('one-liner')">🗑️ चुने हुए Delete</button>
 <div id="onePreview" class="big"></div>
 </div>
 
-<!-- ================= COMBINED ================= -->
+<!-- COMBINED -->
 <div class="box">
 <b>📚 Combined View</b>
 <textarea id="combinedBox"></textarea>
@@ -63,108 +58,97 @@ button{padding:6px 14px;margin:4px;border:none;border-radius:6px;background:#8b2
 <div id="combinedPreview" class="big"></div>
 </div>
 
-<button class="secondary" onclick="openQuestionBank()">📚 Question Bank Manager</button>
+<button onclick="openQuestionBank()">📚 Question Bank Manager</button>
 </div>
 </div>
 
 <script>
-/* ===== DATABASE ===== */
 const AtoZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const SYLLABUS={
 "UP Police Constable":{
- "General Knowledge":{"A. History":[], "B. Geography":[], "C. Polity":[], "D. Economy":[], "E. Science":[], "F. Current Affairs":[]},
- "General Hindi":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
- "Numerical & Mental Ability":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
- "Mental Aptitude / Reasoning":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]]))
+ "General Knowledge":{"A. History":[], "B. Geography":[], "C. Polity":[], "D. Economy":[], "E. Science":[], "F. Current Affairs":[]}
 }
 };
 
 let DB=JSON.parse(localStorage.getItem("anjaliDB"))||SYLLABUS;
 function saveDB(){localStorage.setItem("anjaliDB",JSON.stringify(DB));}
 
-let currentExam=null,currentSubject=null,currentTopic=null;
+let currentExam,currentSubject,currentTopic;
 const tree=document.getElementById("tree");
 
-/* ===== TREE ===== */
-for(let exam in DB){
- let h=document.createElement("h3");h.textContent=exam;tree.appendChild(h);
- for(let subject in DB[exam]){
-  let s=document.createElement("div");s.className="subject";s.textContent=subject;
+/* TREE */
+for(let e in DB){
+ let h=document.createElement("h3");h.textContent=e;tree.appendChild(h);
+ for(let s in DB[e]){
+  let sd=document.createElement("div");sd.className="subject";sd.textContent=s;
   let list=document.createElement("div");
-  for(let topic in DB[exam][subject]){
-   let t=document.createElement("div");t.className="topic";t.textContent=topic;
-   t.onclick=()=>{
-    document.querySelectorAll(".topic").forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-    currentExam=exam;currentSubject=subject;currentTopic=topic;
-    path.textContent=exam+" → "+subject+" → "+topic;
-    render();
-   };
-   list.appendChild(t);
+  for(let t in DB[e][s]){
+   let td=document.createElement("div");td.className="topic";td.textContent=t;
+   td.onclick=()=>{currentExam=e;currentSubject=s;currentTopic=t;path.textContent=e+" → "+s+" → "+t;render();};
+   list.appendChild(td);
   }
-  s.onclick=()=>list.style.display=list.style.display=="block"?"none":"block";
-  tree.appendChild(s);tree.appendChild(list);
+  tree.appendChild(sd);tree.appendChild(list);
  }
 }
 
-/* ===== ADD ===== */
-function addQuiz(){
- quizBox.value.split("\n\n").forEach(q=>{
-  if(q.trim()) DB[currentExam][currentSubject][currentTopic].push({type:"mcq",q:q.trim()});
+/* PARSER */
+function parseMCQs(text){
+ let blocks=text.split(/\n\s*\n/);
+ let out=[];
+ blocks.forEach(b=>{
+  let q=(b.match(/Q:\s*(.+)/i)||[])[1];
+  let a=(b.match(/A\)\s*(.+)/i)||[])[1];
+  let b1=(b.match(/B\)\s*(.+)/i)||[])[1];
+  let c=(b.match(/C\)\s*(.+)/i)||[])[1];
+  let d=(b.match(/D\)\s*(.+)/i)||[])[1];
+  let ans=(b.match(/Ans:\s*([ABCD])/i)||[])[1];
+  let exp=(b.match(/Exp:\s*(.+)/i)||[])[1]||"";
+  if(q&&a&&b1&&c&&d&&ans){
+   out.push({type:"mcq",q,a,b:b1,c,d,correct:ans,exp});
+  }
  });
- quizBox.value=""; saveDB(); render();
+ return out;
 }
 
+/* ADD */
+function addQuiz(){
+ parseMCQs(quizBox.value).forEach(x=>DB[currentExam][currentSubject][currentTopic].push(x));
+ quizBox.value="";saveDB();render();
+}
 function addOne(){
  oneBox.value.split("\n").forEach(l=>{
   if(l.trim()) DB[currentExam][currentSubject][currentTopic].push({type:"one-liner",q:l.trim()});
  });
- oneBox.value=""; saveDB(); render();
+ oneBox.value="";saveDB();render();
 }
-
 function addCombined(){
- combinedBox.value.split("\n\n").forEach(x=>{
-  DB[currentExam][currentSubject][currentTopic].push({
-   type: x.length>120?"mcq":"one-liner",
-   q:x.trim()
-  });
- });
- combinedBox.value=""; saveDB(); render();
+ let t=combinedBox.value;
+ addQuiz.call({},{});
+ addOne.call({},{});
+ combinedBox.value="";
 }
 
-/* ===== DELETE SELECTED ===== */
+/* DELETE */
 function deleteSelected(mode){
  let arr=DB[currentExam][currentSubject][currentTopic];
  DB[currentExam][currentSubject][currentTopic]=arr.filter((x,i)=>{
   let cb=document.getElementById("cb_"+i);
-  if(!cb) return true;
-  if(!cb.checked) return true;
+  if(!cb||!cb.checked) return true;
   if(mode==="all") return false;
   return x.type!==mode;
  });
- saveDB(); render();
+ saveDB();render();
 }
 
-/* ===== RENDER ===== */
+/* RENDER */
 function render(){
  let arr=DB[currentExam][currentSubject][currentTopic];
- quizPreview.innerHTML=arr.map((x,i)=>x.type==="mcq"?`
- <div class="item">
- <input type="checkbox" id="cb_${i}"> ${x.q}
- </div>`:"").join("");
- onePreview.innerHTML=arr.map((x,i)=>x.type==="one-liner"?`
- <div class="item">
- <input type="checkbox" id="cb_${i}"> ${x.q}
- </div>`:"").join("");
- combinedPreview.innerHTML=arr.map((x,i)=>`
- <div class="item">
- <input type="checkbox" id="cb_${i}"> ${x.q}
- </div>`).join("");
+ quizPreview.innerHTML=arr.map((x,i)=>x.type==="mcq"?`<div class="item"><input id="cb_${i}" type="checkbox"> ${x.q}</div>`:"").join("");
+ onePreview.innerHTML=arr.map((x,i)=>x.type==="one-liner"?`<div class="item"><input id="cb_${i}" type="checkbox"> ${x.q}</div>`:"").join("");
+ combinedPreview.innerHTML=arr.map((x,i)=>`<div class="item"><input id="cb_${i}" type="checkbox"> ${x.q}</div>`).join("");
 }
 
-function openQuestionBank(){
- location.href="question_bank_manager.html";
-}
+function openQuestionBank(){location.href="question_bank_manager.html";}
 </script>
 </body>
 </html>
