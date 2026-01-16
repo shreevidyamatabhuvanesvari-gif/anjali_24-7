@@ -6,13 +6,19 @@
 <style>
 body{margin:0;font-family:system-ui;background:#f4f6fb}
 header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20px}
-#layout{display:flex;flex-direction:column;height:calc(100vh - 60px)}
-#tree{display:none}
-#panel{flex:1;padding:12px;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#layout{display:flex;height:calc(100vh - 60px)}
+#tree{width:340px;background:#fff;border-right:1px solid #ccc;padding:10px;overflow-y:auto}
+#panel{flex:1;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
 
+/* विषय सूची */
+.subject{font-weight:bold;color:#8b2d2d;margin-top:8px;cursor:pointer}
+.topic{margin-left:14px;padding:4px;border-radius:6px;cursor:pointer}
+.topic.active{background:#8b2d2d;color:#fff}
+
+/* बड़ा मोबाइल-अनुकूल बॉक्स */
 .big-box{
  width:90%;
- max-width:500px;
+ max-width:600px;
  height:70vh;
  background:#fff;
  border:2px solid #8b2d2d;
@@ -20,8 +26,8 @@ header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20
  padding:10px;
  overflow-y:auto;
  display:flex;
- flex-direction:column-reverse; /* नीचे से ऊपर स्क्रॉल के लिए */
- box-shadow:0 0 10px rgba(0,0,0,0.2);
+ flex-direction:column-reverse; /* नीचे से ऊपर स्क्रॉल */
+ box-shadow:0 0 10px rgba(0,0,0,0.25);
 }
 
 .btn-group{
@@ -48,9 +54,13 @@ button:hover{opacity:0.8}
 #anjaliBtn{
  background:#e91e63;
  font-weight:bold;
+ position:absolute;
+ bottom:10px;
+ right:20px;
 }
 
 .question{border-bottom:1px dashed #ccc;padding:6px 0;}
+hr{border:none;border-top:1px dashed #ccc}
 </style>
 </head>
 
@@ -58,49 +68,102 @@ button:hover{opacity:0.8}
 <header>📚 Anjali – Question Bank Manager</header>
 
 <div id="layout">
- <div class="btn-group">
-   <button onclick="showSection('mcq')">Quiz Bank (MCQ)</button>
-   <button onclick="showSection('one')">One-Liner</button>
-   <button onclick="showSection('all')">Combined</button>
- </div>
+  <!-- बाईं ओर विषय सूची -->
+  <div id="tree"></div>
 
- <div class="big-box" id="displayBox">
-   <div id="content">कृपया ऊपर से कोई विकल्प चुनें।</div>
- </div>
+  <!-- दाईं ओर मुख्य पैनल -->
+  <div id="panel">
+    <h3 id="path">कोई विषय चुनें</h3>
 
- <button id="anjaliBtn" onclick="toggleVoice()">🎤 अंजली (आवाज़)</button>
+    <div class="btn-group">
+      <button onclick="showSection('mcq')">Quiz Bank (MCQ)</button>
+      <button onclick="showSection('one')">One-Liner</button>
+      <button onclick="showSection('all')">Combined</button>
+    </div>
+
+    <div class="big-box">
+      <div id="content">कृपया विषय सूची से कोई विषय चुनें।</div>
+    </div>
+
+    <button id="anjaliBtn" onclick="toggleVoice()">🎤 अंजली (आवाज़)</button>
+  </div>
 </div>
 
 <script>
 let DB=JSON.parse(localStorage.getItem("anjaliDB"))||{};
+const tree=document.getElementById("tree");
+let currentExam,currentSubject,currentTopic;
 let currentData = [];
 let voiceActive = false;
 let synth = window.speechSynthesis;
 
-function showSection(type){
- let html="";
- if(!DB.example){
-   html="<i>डेमो डेटा नहीं मिला।</i>";
- } else {
-   let arr=DB.example.subject.topic || [];
-   if(type==='mcq'){
-     currentData = arr.filter(q=>q.type==='mcq');
-     html=currentData.map((q,i)=>`
-       <div class='question'><b>${i+1}. ${q.q}</b><br>
-       A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>
-       ✔ ${q.correct}</div>`).join("");
-   } else if(type==='one'){
-     currentData = arr.filter(q=>q.type==='one-liner');
-     html=currentData.map((q,i)=>`<div class='question'>${i+1}. ${q.q}</div>`).join("");
-   } else {
-     currentData = arr;
-     html=currentData.map((q,i)=>`<div class='question'>${i+1}. ${q.q}</div>`).join("");
-   }
+/* ---- विषय सूची (Tree) बनाना ---- */
+for(let e in DB){
+ let h=document.createElement("h3");h.textContent=e;tree.appendChild(h);
+ for(let s in DB[e]){
+  let sd=document.createElement("div");sd.className="subject";sd.textContent=s;
+  let list=document.createElement("div");
+  for(let t in DB[e][s]){
+   let td=document.createElement("div");td.className="topic";td.textContent=t;
+   td.onclick=()=>{
+     document.querySelectorAll(".topic").forEach(x=>x.classList.remove("active"));
+     td.classList.add("active");
+     currentExam=e;currentSubject=s;currentTopic=t;
+     path.textContent=e+" → "+s+" → "+t;
+     renderAll();
+   };
+   list.appendChild(td);
+  }
+  tree.appendChild(sd);tree.appendChild(list);
  }
+}
+
+/* ---- MCQ की जांच ---- */
+function isValidMCQ(q){
+ return q.type==="mcq"&&q.q&&q.a&&q.b&&q.c&&q.d&&["A","B","C","D"].includes(q.correct);
+}
+
+/* ---- विषय बदलने पर डेटा रेंडर करना ---- */
+function renderAll(){
+ let arr=DB[currentExam][currentSubject][currentTopic]||[];
+ currentData = arr; // Voice में काम आएगा
+ document.getElementById("content").innerHTML =
+   "<i>कोई विकल्प चुनें ताकि प्रश्न देखें।</i>";
+}
+
+/* ---- बॉक्स में डेटा दिखाना ---- */
+function showSection(type){
+ if(!currentExam||!currentSubject||!currentTopic){
+   document.getElementById("content").innerHTML="<i>पहले कोई विषय चुनें।</i>";
+   return;
+ }
+ let arr=DB[currentExam][currentSubject][currentTopic]||[];
+ let html="";
+ if(type==='mcq'){
+   currentData = arr.filter(isValidMCQ);
+   html=currentData.map((q,i)=>`
+     <div class='question'>
+     <b>${i+1}. ${q.q}</b><br>
+     A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>
+     ✔ ${q.correct}
+     </div>`).join("");
+ }
+ else if(type==='one'){
+   currentData = arr.filter(x=>x.type==='one-liner');
+   html=currentData.map((o,i)=>`<div class='question'>${i+1}. ${o.q}</div>`).join("");
+ }
+ else{
+   currentData = arr;
+   html=currentData.map((x,i)=>isValidMCQ(x)?
+   `<div class='question'><b>${i+1}. ${x.q}</b><br>A) ${x.a} B) ${x.b}<br>C) ${x.c} D) ${x.d}<br>✔ ${x.correct}</div>`:
+   `<div class='question'>${i+1}. ${x.q}</div>`).join("");
+ }
+
  document.getElementById("content").innerHTML = html || "<i>कोई डेटा नहीं</i>";
  if(voiceActive){ readQuestions(); }
 }
 
+/* ---- आवाज़ प्रणाली ---- */
 function toggleVoice(){
  voiceActive = !voiceActive;
  let btn = document.getElementById("anjaliBtn");
@@ -119,7 +182,8 @@ function readQuestions(){
  let voices = synth.getVoices();
  let femaleVoice = voices.find(v=>v.name.includes('Google हिन्दी महिला') || v.name.includes('Female')) || voices[0];
  currentData.forEach((q,i)=>{
-   let utter = new SpeechSynthesisUtterance(q.q);
+   let text = q.q || "";
+   let utter = new SpeechSynthesisUtterance(text);
    utter.lang='hi-IN';
    utter.voice = femaleVoice;
    utter.rate = 1;
