@@ -203,15 +203,24 @@ function readQuestionsInteractive(){
    
    speak(text, femaleVoice, ()=>{
      listenOnce(15, answer=>{
-       let correct = q.correct || "";
-       if(answer){
-         if(answer.toLowerCase().includes(correct.toLowerCase())){
-           speak(`बहुत बढ़िया! आपका उत्तर सही है।`, femaleVoice, ()=>next());
-         } else {
-           speak(`गलत उत्तर। सही उत्तर है ${correct}. ${q.exp? "व्याख्या: "+q.exp : ""}`, femaleVoice, ()=>next());
-         }
+       let correct = q.correct ? q.correct.toLowerCase().trim() : "";
+       let exp = q.exp || "कोई व्याख्या उपलब्ध नहीं है।";
+
+       if(!answer){  // कोई जवाब नहीं मिला
+         speak(`समय समाप्त। मैं सही उत्तर और व्याख्या बता रही हूँ, इसे याद कर लेना।`, femaleVoice, ()=>{
+           speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
+         });
        } else {
-         speak(`समय समाप्त। सही उत्तर है ${correct}. ${q.exp? "व्याख्या: "+q.exp : ""}`, femaleVoice, ()=>next());
+         answer = answer.toLowerCase().trim();
+         if(answer.includes(correct.toLowerCase()) || answer === correct.toLowerCase()){
+           speak(`आपका उत्तर सही है, बहुत अच्छा।`, femaleVoice, ()=>{
+             speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
+           });
+         } else {
+           speak(`मैं सही उत्तर और व्याख्या बता रही हूँ, इसे याद कर लेना।`, femaleVoice, ()=>{
+             speak(`सही उत्तर है ${correct}. व्याख्या: ${exp}`, femaleVoice, ()=>next());
+           });
+         }
        }
      });
    });
