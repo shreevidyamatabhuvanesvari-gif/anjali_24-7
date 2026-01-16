@@ -39,7 +39,11 @@ button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2
 <textarea id="article" style="min-height:140px" placeholder="यहाँ लेख पेस्ट करें…"></textarea>
 <button onclick="generateOneLiners()">🔹 One-Liner बनाए</button>
 <button class="secondary" onclick="saveOneLiners()">💾 One-Liner Save</button>
-<div id="oneLinerView" style="max-height:200px;overflow:auto;border:1px solid #ddd;padding:8px;margin-top:8px;background:#fafafa"></div>
+
+<div id="oneLinerView"
+style="min-height:300px; max-height:400px; overflow:auto;
+border:1px solid #ddd;padding:10px;margin-top:8px;background:#fafafa">
+</div>
 </div>
 
 <!-- ARTICLE → EXAM MCQ -->
@@ -90,13 +94,13 @@ const SYLLABUS={
 }
 };
 
-/* ===== DATABASE ===== */
 let DB=JSON.parse(localStorage.getItem("anjaliDB"))||SYLLABUS;
 function saveDB(){localStorage.setItem("anjaliDB",JSON.stringify(DB));}
 
 /* ===== TREE ===== */
 let currentExam=null,currentSubject=null,currentTopic=null;
 const tree=document.getElementById("tree");
+
 for(let exam in DB){
  let h=document.createElement("h3");h.textContent=exam;tree.appendChild(h);
  for(let subject in DB[exam]){
@@ -109,6 +113,8 @@ for(let exam in DB){
     t.classList.add("active");
     currentExam=exam;currentSubject=subject;currentTopic=topic;
     path.innerText=exam+" → "+subject+" → "+topic;
+    show();
+    showOneLiners();
    };
    list.appendChild(t);
   }
@@ -120,19 +126,26 @@ for(let exam in DB){
 /* ===== MCQ SAVE ===== */
 function saveOne(){
  if(!currentTopic)return alert("विषय चुनें");
- DB[currentExam][currentSubject][currentTopic].push({q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,correct:correct.value,exp:exp.value});
- saveDB(); show();
-}
-function saveBulk(){
- if(!currentTopic)return alert("विषय चुनें");
- bulk.value.split("\n").forEach(l=>{
-  let p=l.split("|");
-  if(p.length>=3){
-   DB[currentExam][currentSubject][currentTopic].push({q:p[0],a:p[1],b:"",c:"",d:"",correct:"A",exp:p[2]});
-  }
+ DB[currentExam][currentSubject][currentTopic].push({
+  q:q.value.trim(),a:a.value.trim(),b:b.value.trim(),
+  c:c.value.trim(),d:d.value.trim(),correct:correct.value.trim(),exp:exp.value.trim()
  });
  saveDB(); show();
 }
+
+function saveBulk(){
+ if(!currentTopic)return alert("विषय चुनें");
+ bulk.value.split("\n").forEach(l=>{
+  let p=l.split("|").map(x=>x.trim());
+  if(p.length>=3){
+   DB[currentExam][currentSubject][currentTopic].push({
+    q:p[0],a:p[1],b:"",c:"",d:"",correct:"A",exp:p[2]
+   });
+  }
+ });
+ saveDB(); show(); alert("Bulk Saved");
+}
+
 function deleteLast(){
  DB[currentExam][currentSubject][currentTopic].pop();
  saveDB(); show();
@@ -141,11 +154,15 @@ function deleteLast(){
 /* ===== VIEW ===== */
 function show(){
  let arr=DB[currentExam][currentSubject][currentTopic];
- view.innerHTML=arr.map((q,i)=>`${i+1}. ${q.q}<br>A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>✔ ${q.correct}<br><i>${q.exp}</i><hr>`).join("");
+ view.innerHTML=arr.map((q,i)=>`
+ ${i+1}. ${q.q}<br>
+ A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>
+ ✔ ${q.correct}<br><i>${q.exp}</i><hr>`).join("");
 }
 
 /* ===== ONE LINER ===== */
 let tempOneLiners=[];
+
 function generateOneLiners(){
  if(!currentTopic)return alert("विषय चुनें");
  const text=article.value.trim();
@@ -153,21 +170,33 @@ function generateOneLiners(){
  tempOneLiners=[];
  text.split(/[।.\n]/).forEach(l=>{
   l=l.trim();
-  if(l.length>25 && l.length<180) tempOneLiners.push(l);
+  if(l.length>25 && l.length<200) tempOneLiners.push(l);
  });
  oneLinerView.innerHTML=tempOneLiners.map((l,i)=>`${i+1}. ${l}<hr>`).join("");
 }
+
 function saveOneLiners(){
  tempOneLiners.forEach(l=>{
-  DB[currentExam][currentSubject][currentTopic].push({q:l,a:"",b:"",c:"",d:"",correct:"",exp:"One-Liner"});
+  DB[currentExam][currentSubject][currentTopic].push({
+    q:l,a:"",b:"",c:"",d:"",correct:"",exp:"One-Liner"
+  });
  });
- saveDB(); tempOneLiners=[]; oneLinerView.innerHTML=""; alert("Saved");
+ saveDB();
+ tempOneLiners=[];
+ showOneLiners();   // 🔥 अब DB से दिखेगा
+ alert("One-Liners Saved");
+}
+
+function showOneLiners(){
+ if(!currentTopic)return;
+ let arr=DB[currentExam][currentSubject][currentTopic].filter(q=>q.exp==="One-Liner");
+ oneLinerView.innerHTML=arr.map((q,i)=>`${i+1}. ${q.q}<hr>`).join("");
 }
 
 /* ===== ARTICLE → ENGINE ===== */
 function generateFromArticle(){
  if(!currentTopic)return alert("विषय चुनें");
- const articleText=document.getElementById("article").value.trim();
+ const articleText=article.value.trim();
  if(articleText.length<80)return alert("लेख छोटा है");
 
  const context=currentSubject+"."+currentTopic;
