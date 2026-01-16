@@ -1,9 +1,9 @@
 /* ======================================================
    🧠 ANJALI – CENTRAL EXAM BRAIN
-   This file connects all domain engines
+   Real Exam-Grade Engine (NO DUMMY CODE)
 ====================================================== */
 
-/* =================== IMPORT ALL ENGINES =================== */
+/* ========== IMPORT EMPLOYMENT SUB-ENGINES ========== */
 
 import { workforceEngine } from "./economy/employment/workforce.js";
 import { sectoralEngine } from "./economy/employment/sectoral.js";
@@ -13,10 +13,10 @@ import { trendsEngine } from "./economy/employment/trends.js";
 import { schemesEngine } from "./economy/employment/schemes.js";
 import { informalEngine } from "./economy/employment/informal.js";
 
-/* =================== ENGINE REGISTRY =================== */
+/* ========== ENGINE REGISTRY ========== */
 
 const ENGINE_REGISTRY = {
-  "Economy.Employment": [
+  "General Knowledge.D. Economy": [
     workforceEngine,
     sectoralEngine,
     unemploymentEngine,
@@ -27,12 +27,17 @@ const ENGINE_REGISTRY = {
   ]
 };
 
-/* =================== MASTER EXTRACTOR =================== */
+/* ======================================================
+   🔥 MAIN FUNCTION CALLED BY control.html
+====================================================== */
 
-export function extractExamFacts(articleText, domainPath) {
+export function extractExamFacts(articleText, context) {
 
-  let engines = ENGINE_REGISTRY[domainPath];
-  if (!engines) return [];
+  const engines = ENGINE_REGISTRY[context];
+  if (!engines) {
+    console.warn("No engine found for:", context);
+    return [];
+  }
 
   let allFacts = [];
 
@@ -40,17 +45,20 @@ export function extractExamFacts(articleText, domainPath) {
     try {
       const facts = engine(articleText);
       if (Array.isArray(facts)) {
-        allFacts = allFacts.concat(facts);
+        allFacts.push(...facts);
       }
     } catch (e) {
       console.error("Engine failed:", engine.name, e);
     }
   });
 
-  return deduplicateFacts(allFacts);
+  const cleanFacts = deduplicateFacts(allFacts);
+  return convertFactsToMCQ(cleanFacts);
 }
 
-/* =================== REMOVE DUPLICATES =================== */
+/* ======================================================
+   🧹 REMOVE DUPLICATES
+====================================================== */
 
 function deduplicateFacts(facts) {
   const seen = new Set();
@@ -62,39 +70,43 @@ function deduplicateFacts(facts) {
   });
 }
 
-/* =================== MCQ GENERATOR =================== */
+/* ======================================================
+   🎯 FACT → EXAM MCQ
+====================================================== */
 
-export function convertFactsToMCQ(facts) {
+function convertFactsToMCQ(facts) {
   return facts.map(f => {
-    let wrong = generateWrongOptions(f.ans);
-    let options = shuffle([f.ans, ...wrong.slice(0,2)]);
+
+    const wrong = generateWrongOptions(f.ans);
+    const options = shuffle([f.ans, wrong[0], wrong[1]]);
     options.push("कोई नहीं");
 
-    let correct = ["A","B","C","D"][options.indexOf(f.ans)];
+    const correct = ["A","B","C","D"][options.indexOf(f.ans)];
 
     return {
       q: f.q,
-      a: options[0],
-      b: options[1],
-      c: options[2],
-      d: options[3],
-      correct: correct,
-      exp: "व्याख्या: " + f.ans + " लेख के अनुसार सही है।"
+      options,
+      correct,
+      explain: "व्याख्या: लेख के अनुसार सही उत्तर — " + f.ans
     };
   });
 }
 
-/* =================== HELPERS =================== */
+/* ======================================================
+   🔧 HELPERS
+====================================================== */
 
 function shuffle(arr) {
   return arr.sort(() => Math.random() - 0.5);
 }
 
 function generateWrongOptions(correct) {
-  return [
+  const pool = [
     "केवल निजी क्षेत्र",
     "अस्थायी प्रवृत्ति",
     "सरकारी नियंत्रण नहीं",
-    "कोई उल्लेख नहीं"
-  ].filter(x => x !== correct);
+    "कोई उल्लेख नहीं",
+    "केवल सेवा क्षेत्र"
+  ];
+  return pool.filter(x => x !== correct);
 }
