@@ -1,112 +1,169 @@
 /* ======================================================
-   🧠 ANJALI – CENTRAL EXAM BRAIN
-   Real Exam-Grade Engine (NO DUMMY CODE)
+   🧠 ANJALI – CENTRAL EXAM BRAIN (STEP-5 FINAL)
+   Purpose: Article → Exam-Grade MCQ + One-Liners
 ====================================================== */
 
-/* ========== IMPORT EMPLOYMENT SUB-ENGINES ========== */
+/* ========= PUBLIC API ========= */
 
-import { workforceEngine } from "./economy/employment/workforce.js";
-import { sectoralEngine } from "./economy/employment/sectoral.js";
-import { unemploymentEngine } from "./economy/employment/unemployment.js";
-import { indicatorsEngine } from "./economy/employment/indicators.js";
-import { trendsEngine } from "./economy/employment/trends.js";
-import { schemesEngine } from "./economy/employment/schemes.js";
-import { informalEngine } from "./economy/employment/informal.js";
+window.extractExamFacts = function(articleText, contextPath) {
+  const lines = splitIntoLines(articleText);
 
-/* ========== ENGINE REGISTRY ========== */
+  let mcqs = [];
+  let oneLiners = [];
 
-const ENGINE_REGISTRY = {
-  "General Knowledge.D. Economy": [
-    workforceEngine,
-    sectoralEngine,
-    unemploymentEngine,
-    indicatorsEngine,
-    trendsEngine,
-    schemesEngine,
-    informalEngine
-  ]
-};
+  const seen = new Set(); // deduplication
 
-/* ======================================================
-   🔥 MAIN FUNCTION CALLED BY control.html
-====================================================== */
+  lines.forEach(line => {
+    const clean = normalize(line);
+    if (!isValidLine(clean)) return;
 
-export function extractExamFacts(articleText, context) {
+    // Decide type
+    if (!hasExamTrigger(clean)) {
+      addUnique(oneLiners, clean, seen, "OL");
+      return;
+    }
 
-  const engines = ENGINE_REGISTRY[context];
-  if (!engines) {
-    console.warn("No engine found for:", context);
-    return [];
-  }
+    const fact = identifyFact(clean);
+    if (!fact) {
+      addUnique(oneLiners, clean, seen, "OL");
+      return;
+    }
 
-  let allFacts = [];
-
-  engines.forEach(engine => {
-    try {
-      const facts = engine(articleText);
-      if (Array.isArray(facts)) {
-        allFacts.push(...facts);
-      }
-    } catch (e) {
-      console.error("Engine failed:", engine.name, e);
+    // MCQ possible?
+    if (isMCQEligible(fact)) {
+      const mcq = buildMCQ(fact);
+      addUnique(mcqs, mcq, seen, "MCQ");
+    } else {
+      addUnique(oneLiners, fact.statement, seen, "OL");
     }
   });
 
-  const cleanFacts = deduplicateFacts(allFacts);
-  return convertFactsToMCQ(cleanFacts);
+  return {
+    mcqs,
+    oneLiners
+  };
+};
+
+/* ========= LINE HANDLING ========= */
+
+function splitIntoLines(text) {
+  return text.split(/[।.\n]/).map(l => l.trim());
 }
 
-/* ======================================================
-   🧹 REMOVE DUPLICATES
-====================================================== */
-
-function deduplicateFacts(facts) {
-  const seen = new Set();
-  return facts.filter(f => {
-    const key = f.q + "|" + f.ans;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function normalize(line) {
+  return line.replace(/\s+/g, " ").trim();
 }
 
-/* ======================================================
-   🎯 FACT → EXAM MCQ
-====================================================== */
+function isValidLine(line) {
+  return line.length > 25 && line.length < 220;
+}
 
-function convertFactsToMCQ(facts) {
-  return facts.map(f => {
+/* ========= EXAM TRIGGERS ========= */
 
-    const wrong = generateWrongOptions(f.ans);
-    const options = shuffle([f.ans, wrong[0], wrong[1]]);
-    options.push("कोई नहीं");
+function hasExamTrigger(line) {
+  const triggers = [
+    "कब", "कौन", "किस", "किसके",
+    "पर आधारित", "मुख्य", "उद्देश्य",
+    "नीति", "संस्था", "वर्ष", "1991",
+    "रिज़र्व बैंक", "RBI", "IMF", "विश्व बैंक"
+  ];
+  return triggers.some(t => line.includes(t));
+}
 
-    const correct = ["A","B","C","D"][options.indexOf(f.ans)];
+/* ========= FACT IDENTIFICATION ========= */
 
+function identifyFact(line) {
+
+  if (line.includes("1991")) {
     return {
-      q: f.q,
-      options,
-      correct,
-      explain: "व्याख्या: लेख के अनुसार सही उत्तर — " + f.ans
+      type: "YEAR_EVENT",
+      question: "भारत में आर्थिक उदारीकरण कब लागू हुआ?",
+      answer: "1991",
+      explanation: "1991 में भारत में आर्थिक उदारीकरण लागू किया गया।"
     };
-  });
+  }
+
+  if (line.includes("रिज़र्व बैंक") || line.includes("RBI")) {
+    return {
+      type: "INSTITUTION",
+      question: "भारत की मौद्रिक नीति कौन संचालित करता है?",
+      answer: "भारतीय रिज़र्व बैंक",
+      explanation: "मौद्रिक नीति का संचालन RBI करता है।"
+    };
+  }
+
+  if (line.includes("कृषि") && line.includes("उद्योग") && line.includes("सेवा")) {
+    return {
+      type: "SECTORS",
+      question: "भारतीय अर्थव्यवस्था किन क्षेत्रों पर आधारित है?",
+      answer: "कृषि, उद्योग और सेवा क्षेत्र",
+      explanation: "भारतीय अर्थव्यवस्था तीन मुख्य क्षेत्रों पर आधारित है।"
+    };
+  }
+
+  if (line.includes("उभरती") || line.includes("विकासशील")) {
+    return {
+      type: "ECONOMY_TYPE",
+      question: "भारत को किस प्रकार की अर्थव्यवस्था माना जाता है?",
+      answer: "उभरती हुई अर्थव्यवस्था",
+      explanation: "भारत को एक विकासशील व उभरती अर्थव्यवस्था माना जाता है।"
+    };
+  }
+
+  return null;
 }
 
-/* ======================================================
-   🔧 HELPERS
-====================================================== */
+/* ========= MCQ ELIGIBILITY ========= */
+
+function isMCQEligible(fact) {
+  return !!fact.question && !!fact.answer;
+}
+
+/* ========= MCQ BUILDER ========= */
+
+function buildMCQ(fact) {
+  const wrongOptions = generateWrongOptions(fact.answer);
+  let options = shuffle([fact.answer, ...wrongOptions.slice(0, 2)]);
+  options.push("कोई नहीं");
+
+  const correctIndex = options.indexOf(fact.answer);
+
+  return {
+    q: fact.question,
+    a: options[0],
+    b: options[1],
+    c: options[2],
+    d: options[3],
+    correct: ["A","B","C","D"][correctIndex],
+    exp: "व्याख्या: " + fact.explanation
+  };
+}
+
+/* ========= HELPERS ========= */
+
+function generateWrongOptions(correct) {
+  const pool = [
+    "केवल निजी क्षेत्र",
+    "केवल कृषि क्षेत्र",
+    "केंद्र सरकार",
+    "राज्य सरकार",
+    "कोई उल्लेख नहीं"
+  ];
+  return pool.filter(p => p !== correct);
+}
 
 function shuffle(arr) {
   return arr.sort(() => Math.random() - 0.5);
 }
 
-function generateWrongOptions(correct) {
-  const pool = [
-    "केवल निजी क्षेत्र",
-    "अस्थायी प्रवृत्ति",
-    "सरकारी नियंत्रण नहीं",
-    "कोई उल्लेख नहीं",
-    "केवल सेवा क्षेत्र"
-  ];
-  return pool.filter(x => x !== correct);
-}
+/* ========= DEDUPLICATION ========= */
+
+function addUnique(arr, item, seen, type) {
+  const key = type === "MCQ"
+    ? item.q + "|" + item.correct
+    : item;
+
+  if (seen.has(key)) return;
+  seen.add(key);
+  arr.push(item);
+   }
