@@ -9,19 +9,19 @@ body{margin:0;font-family:system-ui;background:#f5f6fa}
 header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20px}
 #layout{display:flex;height:calc(100vh - 60px)}
 #tree{width:340px;background:#fff;border-right:1px solid #ddd;overflow:auto;padding:10px}
-#panel{flex:1;padding:10px;overflow:auto}
+#panel{flex:1;padding:12px;overflow:auto}
 
 .subject{font-weight:bold;color:#8b2d2d;margin-top:8px;cursor:pointer}
-.topic{margin-left:14px;padding:6px;border-radius:6px;cursor:pointer}
+.topic{margin-left:14px;padding:5px;border-radius:6px;cursor:pointer}
 .topic:hover{background:#eee}
-.topic.active{background:#8b2d2d;color:white}
+.topic.active{background:#8b2d2d;color:#fff}
 
 textarea,input{width:100%;padding:8px;margin:6px 0}
 button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:white}
 .secondary{background:#555}
 
-.box{border:1px dashed #aaa;padding:10px;margin-top:10px;border-radius:8px;background:#fff}
-.viewBox{min-height:300px;max-height:400px;overflow:auto;border:1px solid #ccc;padding:10px;background:#fafafa}
+.box{border:1px dashed #aaa;padding:10px;margin-top:12px;border-radius:8px;background:#fff}
+.scroll{max-height:320px;overflow:auto}
 </style>
 </head>
 
@@ -34,83 +34,88 @@ button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2
 <div id="panel">
 <h3 id="path">कोई विषय चुनें</h3>
 
-<!-- ARTICLE -->
+<!-- ARTICLE INPUT -->
 <div class="box">
 <b>📄 Article</b>
-<textarea id="article" style="min-height:150px" placeholder="यहाँ लेख पेस्ट करें…"></textarea>
-<button onclick="generateOneLiners()">🔹 One-Liner बनाए</button>
-<button onclick="generateFromArticle()">⚡ Exam MCQ बनाए</button>
-</div>
+<textarea id="article" style="min-height:140px"
+placeholder="यहाँ पूरा लेख पेस्ट करें…"></textarea>
 
-<!-- ONE LINERS -->
-<div class="box">
-<b>🧠 One-Liners (सहेजे नहीं मिटेंगे)</b>
-<div id="oneLinerView" class="viewBox"></div>
-<button onclick="saveOneLiners()">💾 One-Liners Save</button>
+<button onclick="generateFromArticle()">⚡ Article → Exam MCQ</button>
+<button onclick="generateOneLiners()" class="secondary">🔹 One-Liner बनाए</button>
+<button onclick="saveOneLiners()" class="secondary">💾 One-Liner Save</button>
+<button onclick="showOneLiners()">👁️ One-Liner देखें</button>
+
+<div id="oneLinerView" class="scroll"
+style="border:1px solid #ddd;padding:8px;margin-top:8px;background:#fafafa"></div>
 </div>
 
 <!-- MANUAL MCQ -->
 <div class="box">
 <b>📝 एक MCQ जोड़ें</b>
-<textarea id="q"></textarea>
-<input id="a" placeholder="A">
-<input id="b" placeholder="B">
-<input id="c" placeholder="C">
-<input id="d" placeholder="D">
+<textarea id="q" placeholder="प्रश्न"></textarea>
+<input id="a" placeholder="Option A">
+<input id="b" placeholder="Option B">
+<input id="c" placeholder="Option C">
+<input id="d" placeholder="Option D">
 <input id="correct" placeholder="Correct (A/B/C/D)">
 <textarea id="exp" placeholder="व्याख्या"></textarea>
+
 <button onclick="saveOne()">Save</button>
-<button class="secondary" onclick="deleteLast()">Delete Last</button>
+<button onclick="deleteLast()" class="secondary">Delete Last</button>
 </div>
 
-<!-- BULK -->
+<!-- BULK MCQ -->
 <div class="box">
-<b>📚 Bulk (प्रश्न → उत्तर → व्याख्या)</b>
-<textarea id="bulk" style="min-height:120px" placeholder="प्रश्न
-उत्तर
-व्याख्या
-
-प्रश्न
-उत्तर
-व्याख्या"></textarea>
+<b>📚 Bulk MCQ</b>
+<textarea id="bulk" style="min-height:120px"
+placeholder="हर पंक्ति में पूरा MCQ लिखें:
+प्रश्न? विकल्पA; विकल्पB; विकल्पC; विकल्पD; सही(A/B/C/D); व्याख्या">
+</textarea>
 <button onclick="saveBulk()">Save Bulk</button>
 </div>
 
 <div class="box">
-<button onclick="show()">📂 सभी प्रश्न देखें</button>
+<button onclick="show()">📂 प्रश्न देखें</button>
 <button onclick="speak()">🎙️ अंजली</button>
 </div>
 
-<div id="view" class="viewBox"></div>
+<div id="view" class="box scroll"></div>
 </div>
 </div>
 
 <script>
-/* ===== SYLLABUS ===== */
+/* ================= SYLLABUS ================= */
 const AtoZ="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const SYLLABUS={
 "UP Police Constable":{
- "General Knowledge":{"A. History":[], "B. Geography":[], "C. Polity":[], "D. Economy":[], "E. Science":[], "F. Current Affairs":[]},
+ "General Knowledge":{
+  "A. History":[], "B. Geography":[], "C. Polity":[],
+  "D. Economy":[], "E. Science":[], "F. Current Affairs":[]
+ },
  "General Hindi":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
  "Numerical & Mental Ability":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
  "Mental Aptitude / Reasoning":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]]))
 }
 };
 
+/* ================= DATABASE ================= */
 let DB=JSON.parse(localStorage.getItem("anjaliDB"))||SYLLABUS;
 function saveDB(){localStorage.setItem("anjaliDB",JSON.stringify(DB));}
 
-/* ===== TREE ===== */
+/* ================= TREE ================= */
 let currentExam=null,currentSubject=null,currentTopic=null;
 const tree=document.getElementById("tree");
 
 for(let exam in DB){
  let h=document.createElement("h3");h.textContent=exam;tree.appendChild(h);
  for(let subject in DB[exam]){
-  let s=document.createElement("div");s.className="subject";s.textContent=subject;
+  let s=document.createElement("div");
+  s.className="subject"; s.textContent=subject;
+
   let list=document.createElement("div");
   for(let topic in DB[exam][subject]){
-   let t=document.createElement("div");t.className="topic";t.textContent=topic;
+   let t=document.createElement("div");
+   t.className="topic"; t.textContent=topic;
    t.onclick=()=>{
     document.querySelectorAll(".topic").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
@@ -120,32 +125,46 @@ for(let exam in DB){
    };
    list.appendChild(t);
   }
-  s.onclick=()=>list.style.display=list.style.display=="block"?"none":"block";
-  tree.appendChild(s);tree.appendChild(list);
+  s.onclick=()=>list.style.display=list.style.display==="block"?"none":"block";
+  tree.appendChild(s); tree.appendChild(list);
  }
 }
 
-/* ===== MCQ SAVE ===== */
+/* ================= SAVE ONE ================= */
 function saveOne(){
  if(!currentTopic)return alert("विषय चुनें");
  DB[currentExam][currentSubject][currentTopic].push({
-  q:q.value.trim(),a:a.value.trim(),b:b.value.trim(),c:c.value.trim(),d:d.value.trim(),
-  correct:correct.value.trim(),exp:exp.value.trim()
+  q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,
+  correct:correct.value,exp:exp.value
  });
  saveDB(); show();
 }
 
+/* ================= BULK ================= */
 function saveBulk(){
  if(!currentTopic)return alert("विषय चुनें");
- const lines=bulk.value.split("\n").map(x=>x.trim()).filter(x=>x!=="");
- for(let i=0;i<lines.length;i+=3){
-  if(lines[i]&&lines[i+1]&&lines[i+2]){
+ bulk.value.split("\n").forEach(line=>{
+  let p=line.split(";").map(x=>x.trim());
+  if(p.length>=6){
    DB[currentExam][currentSubject][currentTopic].push({
-    q:lines[i],a:lines[i+1],b:"",c:"",d:"",correct:"A",exp:lines[i+2]
+    q:p[0],a:p[1],b:p[2],c:p[3],d:p[4],
+    correct:p[5],exp:p[6]||""
    });
   }
- }
- saveDB(); show(); alert("Bulk Saved");
+ });
+ saveDB(); show(); alert("Bulk MCQ Saved");
+}
+
+/* ================= VIEW ================= */
+function show(){
+ let arr=DB[currentExam][currentSubject][currentTopic];
+ view.innerHTML=arr
+ .filter(x=>x.exp!=="One-Liner")
+ .map((q,i)=>`
+  <b>${i+1}. ${q.q}</b><br>
+  A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>
+  ✔ ${q.correct}<br><i>${q.exp}</i><hr>
+ `).join("");
 }
 
 function deleteLast(){
@@ -153,16 +172,7 @@ function deleteLast(){
  saveDB(); show();
 }
 
-/* ===== VIEW ===== */
-function show(){
- let arr=DB[currentExam][currentSubject][currentTopic];
- view.innerHTML=arr.map((q,i)=>`
- ${i+1}. ${q.q}<br>
- A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>
- ✔ ${q.correct}<br><i>${q.exp}</i><hr>`).join("");
-}
-
-/* ===== ONE LINER ===== */
+/* ================= ONE LINER ================= */
 let tempOneLiners=[];
 
 function generateOneLiners(){
@@ -171,58 +181,72 @@ function generateOneLiners(){
  if(text.length<80)return alert("लेख छोटा है");
  text.split(/[।.\n]/).forEach(l=>{
   l=l.trim();
-  if(l.length>25&&l.length<200) tempOneLiners.push(l);
+  if(l.length>25 && l.length<200){
+   tempOneLiners.push(l);
+  }
  });
  showOneLiners();
 }
 
-function showOneLiners(){
- let saved=DB[currentExam][currentSubject][currentTopic].filter(q=>q.exp==="One-Liner").map(x=>x.q);
- let all=[...saved,...tempOneLiners];
- oneLinerView.innerHTML=all.map((l,i)=>`${i+1}. ${l}<hr>`).join("");
-}
-
 function saveOneLiners(){
  tempOneLiners.forEach(l=>{
-  DB[currentExam][currentSubject][currentTopic].push({q:l,a:"",b:"",c:"",d:"",correct:"",exp:"One-Liner"});
+  DB[currentExam][currentSubject][currentTopic].push({
+   q:l,a:"",b:"",c:"",d:"",correct:"",exp:"One-Liner"
+  });
  });
- saveDB(); tempOneLiners=[]; showOneLiners(); alert("One-Liners Saved");
+ saveDB();
+ tempOneLiners=[];
+ showOneLiners();
 }
 
-/* ===== SIMPLE EXAM ENGINE ===== */
+function showOneLiners(){
+ let arr=DB[currentExam][currentSubject][currentTopic]
+  .filter(q=>q.exp==="One-Liner");
+ oneLinerView.innerHTML=arr.map((q,i)=>`${i+1}. ${q.q}<hr>`).join("");
+}
+
+/* ================= ARTICLE → ENGINE ================= */
 function generateFromArticle(){
  if(!currentTopic)return alert("विषय चुनें");
- const t=article.value;
- if(!t.includes("1991")&&!t.includes("RBI"))return alert("लेख से तथ्य नहीं मिले");
+ const text=article.value.trim();
+ if(text.length<80)return alert("लेख छोटा है");
 
- if(t.includes("1991")){
+ const context=currentSubject+"."+currentTopic;
+ const facts=extractExamFacts(text,context); // 🔥 ENGINE CALL
+
+ if(!facts||facts.length===0)return alert("Exam-level facts नहीं मिले");
+
+ facts.forEach(f=>{
   DB[currentExam][currentSubject][currentTopic].push({
-   q:"भारत में आर्थिक उदारीकरण कब लागू हुआ?",
-   a:"1991",b:"1947",c:"2000",d:"2010",correct:"A",exp:"उदारीकरण 1991 में लागू हुआ"
+   q:f.q,
+   a:f.options[0],
+   b:f.options[1],
+   c:f.options[2],
+   d:f.options[3],
+   correct:f.correct,
+   exp:f.explain
   });
- }
+ });
 
- if(t.includes("RBI")){
-  DB[currentExam][currentSubject][currentTopic].push({
-   q:"भारत की मौद्रिक नीति कौन संचालित करता है?",
-   a:"RBI",b:"सरकार",c:"SEBI",d:"WTO",correct:"A",exp:"RBI मौद्रिक नीति चलाता है"
-  });
- }
-
- saveDB(); show(); alert("Exam MCQ बन गए");
+ saveDB(); show();
+ alert("Article → Exam MCQ बन गए");
 }
 
-/* ===== VOICE ===== */
+/* ================= VOICE ================= */
 function speak(){
- let arr=DB[currentExam][currentSubject][currentTopic]; let i=0;
+ let arr=DB[currentExam][currentSubject][currentTopic];
+ let i=0;
  function go(){
   if(i>=arr.length)return;
   let u=new SpeechSynthesisUtterance(arr[i].q);
   u.lang="hi-IN"; speechSynthesis.speak(u);
-  i++;u.onend=()=>setTimeout(go,800);
+  i++;u.onend=()=>setTimeout(go,700);
  }
  go();
 }
 </script>
+
+<!-- 🔥 CENTRAL BRAIN -->
+<script src="engine.js"></script>
 </body>
 </html>
