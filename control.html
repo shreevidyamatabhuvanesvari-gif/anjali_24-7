@@ -16,13 +16,13 @@ header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20
 .topic:hover{background:#eee}
 .topic.active{background:#8b2d2d;color:white}
 
-textarea,input{width:100%;padding:8px;margin:6px 0}
-button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:white}
+button{padding:6px 12px;margin:4px;border:none;border-radius:6px;background:#8b2d2d;color:white;cursor:pointer}
 .secondary{background:#555}
 .danger{background:#b00020}
 
 .box{border:1px dashed #aaa;padding:10px;margin-top:10px;border-radius:8px;background:#fff}
-.small{font-size:13px;color:#555}
+.big{min-height:260px;overflow:auto}
+hr{border:none;border-top:1px dashed #ccc;margin:8px 0}
 </style>
 </head>
 
@@ -37,54 +37,35 @@ button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2
 
 <!-- ARTICLE -->
 <div class="box">
-<b>🧠 Article (One-Liner + Exam MCQ)</b>
-<textarea id="article" style="min-height:160px" placeholder="यहाँ लेख पेस्ट करें…"></textarea>
-
+<b>🧠 Article</b>
+<textarea id="article" style="width:100%;min-height:140px"></textarea>
 <button onclick="generateOneLiners()">🔹 One-Liner बनाए</button>
-<button onclick="saveOneLiners()" class="secondary">💾 One-Liner Save</button>
-<button onclick="generateFromArticle()">⚡ Exam-Grade MCQ बनाए</button>
-
-<div id="oneLinerView"
-style="min-height:220px;max-height:300px;overflow:auto;
-border:1px solid #ddd;padding:10px;margin-top:8px;background:#fafafa">
-</div>
+<button class="secondary" onclick="saveOneLiners()">💾 Save</button>
+<button onclick="generateFromArticle()">⚡ Exam MCQ</button>
+<div id="oneLinerView" class="big"></div>
 </div>
 
-<!-- FILTER -->
+<!-- QUIZ BANK -->
 <div class="box">
-<b>🔍 Filter</b><br>
-<button onclick="setFilter('all')">सभी</button>
-<button onclick="setFilter('mcq')">केवल MCQ</button>
-<button onclick="setFilter('one-liner')">केवल One-Liner</button>
+<b>📘 Quiz Bank (MCQ)</b>
+<button class="secondary" onclick="openQuestionBank()">📚 Question Bank</button>
+<div id="quizView" class="big"></div>
 </div>
 
-<!-- MANUAL MCQ -->
+<!-- ONE LINER BANK -->
 <div class="box">
-<b>📝 एक MCQ जोड़ें</b>
-<textarea id="q" placeholder="प्रश्न"></textarea>
-<input id="a" placeholder="A">
-<input id="b" placeholder="B">
-<input id="c" placeholder="C">
-<input id="d" placeholder="D">
-<input id="correct" placeholder="Correct (A/B/C/D)">
-<textarea id="exp" placeholder="व्याख्या"></textarea>
-
-<button onclick="saveOne()">Save MCQ</button>
-<button class="secondary" onclick="deleteLast()">Delete Last</button>
+<b>📌 One-Liner / Notes</b>
+<button class="secondary" onclick="openQuestionBank()">📚 Question Bank</button>
+<div id="noteView" class="big"></div>
 </div>
 
-<!-- ACTIONS -->
+<!-- COMBINED -->
 <div class="box">
-<button onclick="show()">👁️ प्रश्न देखें</button>
-<button onclick="speak()">🎙️ अंजली</button>
-
-<!-- ✅ NEW BUTTON ADDED -->
-<button class="secondary" onclick="openQuestionBank()">
-📚 Question Bank Manager
-</button>
+<b>📚 Combined View</b>
+<button class="secondary" onclick="openQuestionBank()">📚 Question Bank</button>
+<div id="combinedView" class="big"></div>
 </div>
 
-<div id="view" class="box" style="min-height:340px;overflow:auto"></div>
 </div>
 </div>
 
@@ -105,7 +86,6 @@ function saveDB(){localStorage.setItem("anjaliDB",JSON.stringify(DB));}
 
 /* ===== TREE ===== */
 let currentExam=null,currentSubject=null,currentTopic=null;
-let filterMode="all";
 const tree=document.getElementById("tree");
 
 for(let exam in DB){
@@ -119,8 +99,8 @@ for(let exam in DB){
     document.querySelectorAll(".topic").forEach(x=>x.classList.remove("active"));
     t.classList.add("active");
     currentExam=exam;currentSubject=subject;currentTopic=topic;
-    path.innerText=exam+" → "+subject+" → "+topic;
-    show(); showOneLiners();
+    path.textContent=exam+" → "+subject+" → "+topic;
+    renderBanks();
    };
    list.appendChild(t);
   }
@@ -129,102 +109,71 @@ for(let exam in DB){
  }
 }
 
-/* ===== FILTER ===== */
-function setFilter(f){ filterMode=f; show(); }
+/* ===== RENDER ===== */
+function renderBanks(){
+ let arr=DB[currentExam][currentSubject][currentTopic]||[];
 
-/* ===== SAVE MCQ ===== */
-function saveOne(){
- DB[currentExam][currentSubject][currentTopic].push({
-  type:"mcq",
-  q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,
-  correct:correct.value,
-  exp:exp.value,
-  pattern:"Manual",
-  difficulty:"Exam"
- });
- saveDB(); show();
-}
-
-function deleteLast(){
- DB[currentExam][currentSubject][currentTopic].pop();
- saveDB(); show();
-}
-
-/* ===== VIEW ===== */
-function show(){
- let arr=DB[currentExam][currentSubject][currentTopic];
- if(filterMode!=="all") arr=arr.filter(x=>x.type===filterMode);
- view.innerHTML=arr.map((q,i)=>`
- <div style="border:1px solid #ccc;padding:10px;margin:10px 0;border-radius:8px">
- <b>${i+1}. ${q.q}</b><br><br>
- ${q.type==="mcq" ? `
- A) ${q.a}<br>B) ${q.b}<br>C) ${q.c}<br>D) ${q.d}<br>
- ✔ ${q.correct}<br>
- <i>${q.exp}</i><br>
- <small>Pattern: ${q.pattern} | Difficulty: ${q.difficulty}</small>
- ` : `
- <i>One-Liner</i>
- <button class="danger" onclick="deleteOneLiner(${i})">🗑️ Delete</button>
- `}
+ quizView.innerHTML=arr.filter(x=>x.type==="mcq").map((q,i)=>`
+ <div>
+ <b>${q.q}</b>
+ <button class="danger" onclick="deleteItem(${i})">🗑️</button><br>
+ A) ${q.a} B) ${q.b}<br>
+ C) ${q.c} D) ${q.d}<br>
+ ✔ ${q.correct}<br><i>${q.exp}</i><hr>
  </div>
- `).join("");
+ `).join("") || "<i>कोई MCQ नहीं</i>";
+
+ noteView.innerHTML=arr.filter(x=>x.type==="one-liner").map((o,i)=>`
+ <div>${o.q}
+ <button class="danger" onclick="deleteItem(${arr.indexOf(o)})">🗑️</button>
+ <hr></div>
+ `).join("") || "<i>कोई One-Liner नहीं</i>";
+
+ combinedView.innerHTML=arr.map((x,i)=>`
+ <div>
+ <b>${x.q}</b>
+ <button class="danger" onclick="deleteItem(${i})">🗑️</button><br>
+ ${x.type==="mcq" ? `
+ A) ${x.a} B) ${x.b}<br>
+ C) ${x.c} D) ${x.d}<br>
+ ✔ ${x.correct}<br><i>${x.exp}</i>` : `<i>One-Liner</i>`}
+ <hr></div>
+ `).join("") || "<i>कोई डेटा नहीं</i>";
+}
+
+/* ===== DELETE ===== */
+function deleteItem(i){
+ DB[currentExam][currentSubject][currentTopic].splice(i,1);
+ saveDB(); renderBanks();
 }
 
 /* ===== ONE LINER ===== */
-let tempOneLiners=[];
+let temp=[];
 function generateOneLiners(){
- const text=article.value.trim();
- tempOneLiners=[];
- text.split(/[।.\n]/).forEach(l=>{
-  l=l.trim();
-  if(l.length>25) tempOneLiners.push(l);
+ temp=[];
+ article.value.split(/[।.\n]/).forEach(l=>{
+  if(l.trim().length>25) temp.push(l.trim());
  });
- oneLinerView.innerHTML=tempOneLiners.map(l=>`• ${l}<hr>`).join("");
+ oneLinerView.innerHTML=temp.map(l=>`• ${l}<hr>`).join("");
 }
 function saveOneLiners(){
- tempOneLiners.forEach(l=>{
+ temp.forEach(l=>{
   DB[currentExam][currentSubject][currentTopic].push({type:"one-liner",q:l});
  });
- saveDB(); tempOneLiners=[]; showOneLiners();
-}
-function showOneLiners(){
- let arr=DB[currentExam][currentSubject][currentTopic].filter(x=>x.type==="one-liner");
- oneLinerView.innerHTML=arr.map(l=>`• ${l.q}<hr>`).join("");
-}
-function deleteOneLiner(i){
- DB[currentExam][currentSubject][currentTopic].splice(i,1);
- saveDB(); show(); showOneLiners();
+ temp=[]; saveDB(); renderBanks();
 }
 
 /* ===== ENGINE ===== */
 function generateFromArticle(){
- const text=article.value.trim();
- const ctx=currentSubject+"."+currentTopic;
- const facts=extractExamFacts(text,ctx);
- const mcqs=convertFactsToMCQ(facts);
- mcqs.forEach(m=>{
+ const facts=extractExamFacts(article.value,currentSubject+"."+currentTopic);
+ convertFactsToMCQ(facts).forEach(m=>{
   m.type="mcq";
-  m.pattern="Engine";
-  m.difficulty="Exam";
   DB[currentExam][currentSubject][currentTopic].push(m);
  });
- saveDB(); show();
+ saveDB(); renderBanks();
 }
 
-/* ===== VOICE ===== */
-function speak(){
- let arr=DB[currentExam][currentSubject][currentTopic];
- let i=0;
- function go(){
-  if(i>=arr.length)return;
-  let u=new SpeechSynthesisUtterance(arr[i].q);
-  u.lang="hi-IN"; speechSynthesis.speak(u);
-  i++;u.onend=()=>setTimeout(go,700);
- }
- go();
-}
-
-/* ===== NAVIGATION ===== */
+/* ===== NAV ===== */
 function openQuestionBank(){
  window.location.href="question_bank_manager.html";
 }
