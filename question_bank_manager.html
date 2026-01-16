@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Anjali – Question Bank Manager</title>
+
+<style>
+body{margin:0;font-family:system-ui;background:#f4f6fb}
+header{background:#8b2d2d;color:#fff;padding:14px;text-align:center;font-size:20px}
+
+#layout{display:flex;height:calc(100vh - 60px)}
+#tree{width:340px;background:#fff;border-right:1px solid #ccc;overflow:auto;padding:10px}
+#panel{flex:1;padding:12px;overflow:auto}
+
+.subject{font-weight:bold;color:#8b2d2d;margin-top:8px;cursor:pointer}
+.topic{margin-left:14px;padding:4px;border-radius:6px;cursor:pointer}
+.topic:hover{background:#eee}
+.topic.active{background:#8b2d2d;color:#fff}
+
+.box{border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:10px;background:#fff}
+textarea,input{width:100%;padding:6px;margin:4px 0}
+button{padding:8px 14px;margin:4px;border:none;border-radius:8px;background:#8b2d2d;color:#fff;cursor:pointer}
+.secondary{background:#555}
+hr{border:none;border-top:1px dashed #ccc;margin:8px 0}
+</style>
+</head>
+
+<body>
+<header>📚 Anjali – Question Bank Manager</header>
+
+<div id="layout">
+
+<!-- LEFT TREE -->
+<div id="tree"></div>
+
+<!-- RIGHT PANEL -->
+<div id="panel">
+<h3 id="path">कोई विषय चुनें</h3>
+
+<div class="box">
+<b>📝 MCQ जोड़ें</b>
+<textarea id="q" placeholder="प्रश्न"></textarea>
+<input id="a" placeholder="Option A">
+<input id="b" placeholder="Option B">
+<input id="c" placeholder="Option C">
+<input id="d" placeholder="Option D">
+<input id="correct" placeholder="Correct (A/B/C/D)">
+<textarea id="exp" placeholder="व्याख्या"></textarea>
+<button onclick="saveMCQ()">Save MCQ</button>
+<button class="secondary" onclick="deleteLast()">Delete Last</button>
+</div>
+
+<div class="box">
+<b>📚 Bulk MCQ (हर लाइन = प्रश्न)</b>
+<textarea id="bulk"></textarea>
+<button onclick="saveBulk()">Save Bulk</button>
+</div>
+
+<div class="box">
+<b>📌 One-Liner / Notes</b>
+<textarea id="one"></textarea>
+<button onclick="saveOne()">Save One-Liner</button>
+</div>
+
+<div class="box">
+<button onclick="show()">👁️ सभी प्रश्न देखें</button>
+</div>
+
+<div id="view" class="box" style="min-height:300px;overflow:auto"></div>
+</div>
+</div>
+
+<script>
+/* ================= SYLLABUS (MATCHED) ================= */
+
+const AtoZ = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+const SYLLABUS = {
+ "UP Police Constable":{
+  "General Knowledge":{
+   "A. History":[],
+   "B. Geography":[],
+   "C. Polity":[],
+   "D. Economy":[],
+   "E. Science":[],
+   "F. Current Affairs":[]
+  },
+  "General Hindi":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
+  "Numerical & Mental Ability":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]])),
+  "Mental Aptitude / Reasoning":Object.fromEntries(AtoZ.map(x=>[x+". विषय",[]]))
+ }
+};
+
+/* ================= DATABASE ================= */
+
+let DB = JSON.parse(localStorage.getItem("QB_MANAGER")) || SYLLABUS;
+function saveDB(){ localStorage.setItem("QB_MANAGER", JSON.stringify(DB)); }
+
+/* ================= TREE ================= */
+
+let currentExam=null,currentSubject=null,currentTopic=null;
+const tree=document.getElementById("tree");
+
+for(let exam in DB){
+ let eh=document.createElement("h3");
+ eh.textContent=exam;
+ tree.appendChild(eh);
+
+ for(let subject in DB[exam]){
+  let s=document.createElement("div");
+  s.className="subject";
+  s.textContent=subject;
+
+  let list=document.createElement("div");
+
+  for(let topic in DB[exam][subject]){
+   let t=document.createElement("div");
+   t.className="topic";
+   t.textContent=topic;
+
+   t.onclick=()=>{
+    document.querySelectorAll(".topic").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    currentExam=exam;
+    currentSubject=subject;
+    currentTopic=topic;
+    path.textContent=exam+" → "+subject+" → "+topic;
+    show();
+   };
+   list.appendChild(t);
+  }
+
+  s.onclick=()=>list.style.display=list.style.display==="none"?"block":"none";
+  tree.appendChild(s);
+  tree.appendChild(list);
+ }
+}
+
+/* ================= SAVE ================= */
+
+function saveMCQ(){
+ if(!currentTopic) return alert("विषय चुनें");
+ DB[currentExam][currentSubject][currentTopic].push({
+  type:"mcq",
+  q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,
+  correct:correct.value,
+  exp:exp.value
+ });
+ saveDB(); show();
+}
+
+function saveBulk(){
+ if(!currentTopic) return alert("विषय चुनें");
+ bulk.value.split("\n").forEach(line=>{
+  if(line.trim()){
+   DB[currentExam][currentSubject][currentTopic].push({
+    type:"mcq",
+    q:line.trim(),
+    a:"",b:"",c:"",d:"",
+    correct:"",
+    exp:""
+   });
+  }
+ });
+ saveDB(); show();
+}
+
+function saveOne(){
+ if(!currentTopic) return alert("विषय चुनें");
+ DB[currentExam][currentSubject][currentTopic].push({
+  type:"one-liner",
+  q:one.value
+ });
+ saveDB(); show();
+}
+
+function deleteLast(){
+ if(!currentTopic) return;
+ DB[currentExam][currentSubject][currentTopic].pop();
+ saveDB(); show();
+}
+
+/* ================= VIEW ================= */
+
+function show(){
+ let arr=DB[currentExam][currentSubject][currentTopic];
+ view.innerHTML=arr.map((x,i)=>{
+  if(x.type==="one-liner"){
+   return `<b>${i+1}. ${x.q}</b><hr>`;
+  }
+  return `
+  <b>${i+1}. ${x.q}</b><br>
+  A) ${x.a} B) ${x.b}<br>
+  C) ${x.c} D) ${x.d}<br>
+  ✔ ${x.correct}<br>
+  <i>${x.exp}</i><hr>`;
+ }).join("");
+}
+</script>
+</body>
+</html>
