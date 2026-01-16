@@ -1,93 +1,172 @@
 /* ======================================================
-   🧠 ANJALI – CENTRAL EXAM ENGINE (GLOBAL)
+   🧠 ANJALI – CENTRAL EXAM ENGINE (PRODUCTION)
    Exam-grade | Browser-safe | No import/export
 ====================================================== */
 
-window.extractExamFacts = function(articleText, context){
+(function () {
 
-  let facts = [];
-  let lines = articleText.split(/[।.\n]/);
+  /* ========= PUBLIC API ========= */
+  window.extractExamFacts = function (articleText, contextPath) {
 
-  lines.forEach(line=>{
-    line = line.trim();
-    if(line.length < 15) return;
+    if (!articleText || articleText.length < 50) return [];
 
-    /* ===== ECONOMY : CORE EXAM FACTS ===== */
+    const lines = normalize(articleText);
+    let facts = [];
 
-    if(line.includes("उदारीकरण") || line.includes("1991")){
-      facts.push({
-        q: "भारत में आर्थिक उदारीकरण कब लागू हुआ?",
-        ans: "1991"
-      });
+    /* ===== ROUTE BY CONTEXT ===== */
+    if (contextPath.includes("Economy")) {
+      facts = facts.concat(economyEngine(lines));
     }
 
-    if(line.includes("रिज़र्व बैंक") || line.includes("RBI")){
-      facts.push({
-        q: "भारत की मौद्रिक नीति कौन संचालित करता है?",
-        ans: "भारतीय रिज़र्व बैंक"
-      });
-    }
+    /* ===== FINAL OUTPUT ===== */
+    facts = deduplicateFacts(facts);
+    return convertFactsToMCQ(facts);
+  };
 
-    if(line.includes("मिश्रित अर्थव्यवस्था")){
-      facts.push({
-        q: "भारतीय अर्थव्यवस्था किस प्रकार की है?",
-        ans: "मिश्रित अर्थव्यवस्था"
-      });
-    }
+  /* ======================================================
+     🔵 ECONOMY : EXAM CONTEXT ENGINE
+  ====================================================== */
 
-    if(line.includes("कृषि") && line.includes("उद्योग") && line.includes("सेवा")){
-      facts.push({
-        q: "भारतीय अर्थव्यवस्था किन तीन क्षेत्रों पर आधारित है?",
-        ans: "कृषि, उद्योग और सेवा क्षेत्र"
-      });
-    }
+  function economyEngine(lines) {
+    let facts = [];
 
-    if(line.includes("विदेशी निवेश")){
-      facts.push({
-        q: "उदारीकरण के बाद भारत में किसका प्रवाह बढ़ा?",
-        ans: "विदेशी निवेश"
-      });
-    }
-  });
+    lines.forEach(line => {
 
-  return convertFactsToMCQ(deduplicateFacts(facts));
-};
+      /* 1️⃣ Economic Nature */
+      if (has(line, ["मिश्रित अर्थव्यवस्था"])) {
+        facts.push({
+          q: "भारतीय अर्थव्यवस्था किस प्रकार की है?",
+          ans: "मिश्रित अर्थव्यवस्था"
+        });
+      }
 
-/* ========== HELPERS ========== */
+      /* 2️⃣ Sectors */
+      if (has(line, ["कृषि", "उद्योग", "सेवा"])) {
+        facts.push({
+          q: "भारतीय अर्थव्यवस्था किन तीन क्षेत्रों पर आधारित है?",
+          ans: "कृषि, उद्योग और सेवा क्षेत्र"
+        });
+      }
 
-function convertFactsToMCQ(facts){
-  return facts.map(f=>{
-    let wrong = [
+      /* 3️⃣ Monetary Authority */
+      if (has(line, ["रिज़र्व बैंक", "RBI"])) {
+        facts.push({
+          q: "भारत की मौद्रिक नीति कौन संचालित करता है?",
+          ans: "भारतीय रिज़र्व बैंक"
+        });
+      }
+
+      /* 4️⃣ Liberalisation */
+      if (has(line, ["उदारीकरण", "1991"])) {
+        facts.push({
+          q: "भारत में आर्थिक उदारीकरण कब लागू हुआ?",
+          ans: "1991"
+        });
+      }
+
+      /* 5️⃣ Foreign Investment */
+      if (has(line, ["विदेशी निवेश"])) {
+        facts.push({
+          q: "उदारीकरण के बाद भारत में किसका प्रवाह बढ़ा?",
+          ans: "विदेशी निवेश"
+        });
+      }
+
+      /* 6️⃣ Employment */
+      if (has(line, ["रोजगार", "आबादी"])) {
+        facts.push({
+          q: "भारत में सबसे अधिक रोजगार किस क्षेत्र से प्राप्त होता है?",
+          ans: "कृषि क्षेत्र"
+        });
+      }
+
+      /* 7️⃣ Growth Status */
+      if (has(line, ["उभरती", "विकासशील"])) {
+        facts.push({
+          q: "भारत को किस प्रकार की अर्थव्यवस्था माना जाता है?",
+          ans: "उभरती हुई अर्थव्यवस्था"
+        });
+      }
+
+      /* 8️⃣ Banking Role */
+      if (has(line, ["बैंकिंग", "ऋण"])) {
+        facts.push({
+          q: "बैंकिंग प्रणाली का मुख्य कार्य क्या है?",
+          ans: "ऋण और मुद्रा का प्रबंधन"
+        });
+      }
+
+      /* 9️⃣ Government Policy */
+      if (has(line, ["सरकार", "आर्थिक नीति"])) {
+        facts.push({
+          q: "देश की आर्थिक नीति कौन निर्धारित करता है?",
+          ans: "केंद्र सरकार"
+        });
+      }
+
+    });
+
+    return facts;
+  }
+
+  /* ======================================================
+     🧩 MCQ GENERATOR
+  ====================================================== */
+
+  function convertFactsToMCQ(facts) {
+    return facts.map(f => {
+
+      const wrongOptions = generateWrongs(f.ans);
+      let options = shuffle([f.ans, wrongOptions[0], wrongOptions[1], "अन्य"]);
+      const correct = ["A", "B", "C", "D"][options.indexOf(f.ans)];
+
+      return {
+        q: f.q,
+        options,
+        correct,
+        explain: "व्याख्या: " + f.ans + " लेख में स्पष्ट रूप से उल्लेखित है।"
+      };
+    });
+  }
+
+  /* ======================================================
+     🔧 HELPERS
+  ====================================================== */
+
+  function normalize(text) {
+    return text
+      .replace(/\s+/g, " ")
+      .split(/[।.\n]/)
+      .map(l => l.trim())
+      .filter(l => l.length > 15);
+  }
+
+  function has(line, keywords) {
+    return keywords.every(k => line.includes(k));
+  }
+
+  function generateWrongs(correct) {
+    const pool = [
       "केवल निजी क्षेत्र",
       "केवल सरकारी क्षेत्र",
+      "अस्थायी व्यवस्था",
       "कोई उल्लेख नहीं"
     ];
+    return pool.filter(x => x !== correct);
+  }
 
-    let options = shuffle([f.ans, wrong[0], wrong[1]]);
-    options.push("अन्य");
+  function shuffle(arr) {
+    return arr.sort(() => Math.random() - 0.5);
+  }
 
-    let correct = ["A","B","C","D"][options.indexOf(f.ans)];
+  function deduplicateFacts(facts) {
+    const seen = new Set();
+    return facts.filter(f => {
+      const key = f.q + "|" + f.ans;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
 
-    return {
-      q: f.q,
-      options: options,
-      correct: correct,
-      explain: "व्याख्या: " + f.ans + " लेख के अनुसार सही है।"
-    };
-  });
-}
-
-function shuffle(arr){
-  return arr.sort(()=>Math.random()-0.5);
-}
-
-function deduplicateFacts(facts){
-  const seen = new Set();
-  return facts.filter(f=>{
-    let key = f.q + f.ans;
-    if(seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-       }
+})();
